@@ -1,0 +1,232 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── DESIGN TOKENS ─────────────────────────────────────────── */
+:root {
+  --bg:           #0d1b2a;
+  --bg-panel:     #0f2030;
+  --bg-panel-alt: #0a0a0e;
+  --bg-input:     rgba(255,255,255,0.05);
+
+  --border:       rgba(201,168,76,0.35);
+  --border-dim:   rgba(201,168,76,0.18);
+  --border-strong:rgba(201,168,76,0.6);
+
+  --text-1:       #f5ede0;
+  --text-2:       #a8b8c8;
+  --text-3:       #5a6e82;
+
+  --brass:        #c9a84c;
+  --brass-bright: #e8c56a;
+  --brass-dim:    #8a6e2f;
+  --aqua:         #7ecfc0;
+  --aqua-dim:     #4a9e92;
+  --negative:     #5b9cc4;
+  --negative-dim: #3a6e96;
+
+  --grid-line: rgba(201,168,76,0.04);
+}
+
+[data-theme="light"] {
+  --bg:           #f0e8d4;
+  --bg-panel:     #e8dfc8;
+  --bg-panel-alt: #ddd4bc;
+  --bg-input:     rgba(0,0,0,0.05);
+
+  --border:       rgba(139,90,20,0.4);
+  --border-dim:   rgba(139,90,20,0.22);
+  --border-strong:rgba(139,90,20,0.7);
+
+  --text-1:       #0a0a0e;
+  --text-2:       #3a4a5a;
+  --text-3:       #8a7a66;
+
+  --brass:        #8a5a0a;
+  --brass-bright: #a06a14;
+  --brass-dim:    #c49a50;
+  --aqua:         #2a8a7e;
+  --aqua-dim:     #1a6a60;
+  --negative:     #2a60a0;
+  --negative-dim: #1a4880;
+
+  --grid-line: rgba(139,90,20,0.06);
+}
+
+/* ─── BASE ───────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--bg);
+    color: var(--text-1);
+    font-family: 'DM Sans', system-ui, sans-serif;
+    min-height: 100vh;
+    background-image:
+      repeating-linear-gradient(0deg,   transparent, transparent 39px, var(--grid-line) 39px, var(--grid-line) 40px),
+      repeating-linear-gradient(90deg,  transparent, transparent 39px, var(--grid-line) 39px, var(--grid-line) 40px);
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  #root { width: 100%; min-height: 100vh; }
+
+  h1, h2, h3 {
+    font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+    color: var(--text-1);
+  }
+
+  ::-webkit-scrollbar { width: 3px; height: 3px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--text-3); border-radius: 9999px; }
+}
+
+/* ─── COMPONENTS ─────────────────────────────────────────────── */
+@layer components {
+
+  .panel {
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-dim);
+    border-radius: 2px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+  }
+
+  .panel-dark {
+    background-color: var(--bg-panel-alt);
+    border: 1px solid var(--border-dim);
+    border-radius: 2px;
+  }
+
+  .brass-border { border: 1px solid var(--border); }
+
+  .ruled-line { border-bottom: 1px solid var(--border-dim); }
+
+  /* Label — Bauhaus utility text */
+  .label-xs {
+    font-size: 0.6rem;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+
+  /* Buttons */
+  .btn-brass {
+    background-color: var(--brass);
+    color: var(--bg);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 11px 28px;
+    border-radius: 1px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+  .btn-brass:hover { background-color: var(--brass-bright); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--brass);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 11px 28px;
+    border-radius: 1px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-ghost:hover { border-color: var(--border-strong); color: var(--brass-bright); }
+
+  /* Bubble values */
+  .bubble-positive { color: var(--brass); font-family: 'DM Mono', monospace; font-weight: 600; }
+  .bubble-negative { color: var(--negative); font-family: 'DM Mono', monospace; font-weight: 600; }
+
+  /* Geometry */
+  .hexagon {
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  }
+
+  /* Art deco ruled divider */
+  .art-deco-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .art-deco-divider::before, .art-deco-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--border));
+  }
+  .art-deco-divider::after {
+    background: linear-gradient(to left, transparent, var(--border));
+  }
+
+  /* Nav */
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 8px;
+    color: var(--text-3);
+    cursor: pointer;
+    position: relative;
+    transition: color 0.15s;
+    text-decoration: none;
+    width: 100%;
+    justify-content: center;
+  }
+  .nav-item:hover { color: var(--brass); }
+  .nav-item.active { color: var(--brass); }
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2px;
+    height: 28px;
+    background-color: var(--brass);
+  }
+}
+
+/* ─── ANIMATIONS ─────────────────────────────────────────────── */
+@keyframes slideIn {
+  from { transform: translateX(28px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes bubblePop {
+  0%   { transform: scale(0.7) translateY(8px); opacity: 0; }
+  55%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes bubbleRise {
+  0%   { transform: translateY(0) scale(1); opacity: 0.8; }
+  100% { transform: translateY(-40px) scale(0.4); opacity: 0; }
+}
+
+.animate-slide-in  { animation: slideIn  0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.animate-slide-up  { animation: slideUp  0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.animate-fade-in   { animation: fadeIn   0.35s ease; }
+.animate-bubble-pop { animation: bubblePop 0.45s cubic-bezier(0.16, 1, 0.3, 1); }
