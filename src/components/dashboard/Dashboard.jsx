@@ -1,13 +1,37 @@
+import { useEffect, useRef } from 'react'
 import BubbleGauge from './BubbleGauge'
 import WeekView from './WeekView'
 import TaskList from '../tasks/TaskList'
 import SeaAnimalIllustration from '../SeaAnimalIllustration'
 import { useStore } from '../../store/useStore'
 import { getLevelForBubbles } from '../../constants/levels'
+import { useAlertTrigger } from '../../context/AlertContext'
+
+const IDLE_MS = 3 * 60 * 1000 // 3 minutes idle on dashboard
 
 export default function Dashboard() {
   const bubbles = useStore(s => s.bubbles)
   const logs = useStore(s => s.logs)
+  const { showAlert } = useAlertTrigger()
+  const idleTimerRef = useRef(null)
+
+  // Idle trigger — show a sea animal after 3 min of no pointer activity
+  useEffect(() => {
+    function resetIdle() {
+      clearTimeout(idleTimerRef.current)
+      idleTimerRef.current = setTimeout(() => showAlert('general'), IDLE_MS)
+    }
+    resetIdle() // arm immediately on mount
+    window.addEventListener('pointermove', resetIdle)
+    window.addEventListener('pointerdown', resetIdle)
+    window.addEventListener('keydown', resetIdle)
+    return () => {
+      clearTimeout(idleTimerRef.current)
+      window.removeEventListener('pointermove', resetIdle)
+      window.removeEventListener('pointerdown', resetIdle)
+      window.removeEventListener('keydown', resetIdle)
+    }
+  }, [showAlert])
   const level = getLevelForBubbles(bubbles)
   const recentLogs = logs.slice(0, 6)
 

@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../../store/useStore'
-import { useAlerts } from '../../hooks/useAlerts'
 import { LEVELS } from '../../constants/levels'
-import { useStore as useRawStore } from '../../store/useStore'
 import SeaAnimalIllustration from '../SeaAnimalIllustration'
 
 function Field({ label, value, onChange, type = 'number', min, max, hint }) {
@@ -31,7 +29,7 @@ function Field({ label, value, onChange, type = 'number', min, max, hint }) {
 export default function Settings() {
   const { settings, updateSettings } = useStore()
   const { showAlert } = useAlerts()
-  const bubbles = useRawStore(s => s.bubbles)
+  const bubbles = useStore(s => s.bubbles)
   const [saved, setSaved] = useState(false)
 
   function save() {
@@ -128,14 +126,6 @@ export default function Settings() {
             </div>
           )
         })}
-      </div>
-
-      {/* Debug */}
-      <div className="panel" style={{ padding: 20, marginBottom: 16 }}>
-        <div className="label-xs" style={{ marginBottom: 12 }}>Debug</div>
-        <button onClick={() => showAlert('general')} className="btn-ghost">
-          Trigger a sea animal alert
-        </button>
       </div>
 
       <button onClick={save} className="btn-brass" style={{ width: '100%' }}>

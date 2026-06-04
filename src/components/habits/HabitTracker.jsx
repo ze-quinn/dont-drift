@@ -1,7 +1,7 @@
 import { useStore } from '../../store/useStore'
 import { isWeekend } from '../../constants/activities'
-import { CHEAT_ALLOWANCES } from '../../constants/bubbles'
-import { BUBBLE_RULES } from '../../constants/bubbles'
+import { CHEAT_ALLOWANCES, BUBBLE_RULES } from '../../constants/bubbles'
+import { useAlertTrigger } from '../../context/AlertContext'
 
 const HABITS_LIST = [
   { id: 'sleep7',   label: 'Slept 7+ hours',          icon: '😴', ruleKey: 'SLEEP_7',            delta: +20 },
@@ -83,6 +83,7 @@ export default function HabitTracker() {
   const isLoggedToday  = useStore(s => s.isLoggedToday)
   const cheatAllowances   = useStore(s => s.cheatAllowances)
   const updateCheatAllowances = useStore(s => s.updateCheatAllowances)
+  const { showAlert } = useAlertTrigger()
   const weekend = isWeekend()
 
   const logged = {
@@ -101,6 +102,8 @@ export default function HabitTracker() {
     addBubbles(habit.ruleKey, rule.label, rule.delta)
     if (habit.ruleKey === 'CHEAT_MEAL_WEEKDAY') updateCheatAllowances({ burgers: cheatAllowances.burgers + 1 })
     if (habit.ruleKey === 'ALCOHOL_WEEKDAY')    updateCheatAllowances({ boozeDays: cheatAllowances.boozeDays + 1 })
+    // Sea animal appears after every third habit tap (feels generous, not spammy)
+    if (Math.random() < 0.4) setTimeout(() => showAlert('general'), 1800)
   }
 
   return (

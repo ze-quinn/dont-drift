@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { BUBBLE_RULES } from '../../constants/bubbles'
 import { isWeekend } from '../../constants/activities'
+import { useAlertTrigger } from '../../context/AlertContext'
 
 const ACTIVITY_OPTIONS = [
   { id: 'run',           label: '🏃 Run',                  hasDuration: true,  getRule: m => m < 20 ? 'RUN_SHORT' : m < 40 ? 'RUN_MID' : 'RUN_LONG', saturdayBonus: true },
@@ -63,12 +64,13 @@ function BubbleFlash({ delta, onDone }) {
 
 export default function ActivityLog() {
   const addBubbles = useStore(s => s.addBubbles)
-  const [tab, setTab]         = useState('activity')
+  const { showAlert } = useAlertTrigger()
+  const [tab, setTab]           = useState('activity')
   const [selected, setSelected] = useState(null)
   const [duration, setDuration] = useState(30)
   const [note, setNote]         = useState('')
   const [flash, setFlash]       = useState(null)
-  const weekend   = isWeekend()
+  const weekend    = isWeekend()
   const isSaturday = new Date().getDay() === 6
 
   const currentOptions = tab === 'activity' ? ACTIVITY_OPTIONS : PENALTY_OPTIONS
@@ -101,6 +103,9 @@ export default function ActivityLog() {
     setSelected(null)
     setNote('')
     setDuration(30)
+    // Ambient trigger — show a sea animal after logging, with a short delay
+    // so it doesn't compete with the bubble flash
+    setTimeout(() => showAlert('general'), 2200)
   }
 
   return (
