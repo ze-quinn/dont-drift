@@ -115,6 +115,19 @@ export const useStore = create(
         }))
       },
 
+      // Bulk hydrate from cloud data (called after login)
+      hydrateFromCloud: (data) => {
+        set(state => ({
+          bubbles:          data.bubbles          ?? state.bubbles,
+          logs:             data.logs             ?? state.logs,
+          weightLog:        data.weightLog        ?? state.weightLog,
+          streaks:          data.streaks          ?? state.streaks,
+          settings:         data.settings         ? { ...state.settings, ...data.settings } : state.settings,
+          cheatAllowances:  data.cheatAllowances  ?? state.cheatAllowances,
+          seenAlertIds:     data.seenAlertIds     ?? state.seenAlertIds,
+        }))
+      },
+
       // Alert deduplication
       markAlertSeen: (alertId) => {
         set(state => ({

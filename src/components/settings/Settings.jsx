@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useStore } from '../../store/useStore'
 import { LEVELS } from '../../constants/levels'
 import SeaAnimalIllustration from '../SeaAnimalIllustration'
 import { usePushNotifications } from '../../hooks/usePushNotifications'
+import { supabase } from '../../lib/supabase'
 
 function Field({ label, value, onChange, type = 'number', min, max, hint }) {
   return (
@@ -61,7 +62,14 @@ export default function Settings() {
   const { settings, updateSettings } = useStore()
   const bubbles = useStore(s => s.bubbles)
   const { status: pushStatus, error: pushError, prefsSaved, subscribe, unsubscribe, savePrefs } = usePushNotifications()
-  const [saved, setSaved] = useState(false)
+  const [saved, setSaved]     = useState(false)
+  const [userEmail, setUserEmail] = useState('')
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserEmail(session?.user?.email ?? '')
+    })
+  }, [])
 
   function save() {
     setSaved(true)
@@ -291,6 +299,26 @@ export default function Settings() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Account */}
+      <div className="panel" style={{ padding: 20, marginBottom: 12 }}>
+        <div className="label-xs" style={{ color: 'var(--brass)', marginBottom: 14 }}>Account</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-2)', fontFamily: 'DM Sans, sans-serif' }}>
+              {userEmail || '—'}
+            </div>
+            <div className="label-xs" style={{ marginTop: 3 }}>Synced across all devices</div>
+          </div>
+          <button
+            onClick={() => supabase.auth.signOut()}
+            className="btn-ghost"
+            style={{ fontSize: '0.65rem', padding: '6px 14px', flexShrink: 0 }}
+          >
+            Sign out
+          </button>
+        </div>
       </div>
 
       <button onClick={save} className="btn-brass" style={{ width: '100%' }}>

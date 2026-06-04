@@ -6,10 +6,12 @@ import AlertToast from '../alerts/AlertToast'
 import { useAlerts } from '../../hooks/useAlerts'
 import { useStore } from '../../store/useStore'
 import { AlertContext } from '../../context/AlertContext'
+import { useSync } from '../../hooks/useSync'
 
 export default function Shell() {
   const { currentAlert, showAlert, dismissAlert } = useAlerts()
   const theme = useStore(s => s.settings.theme ?? 'dark')
+  useSync()
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
