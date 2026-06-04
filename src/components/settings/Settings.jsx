@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { LEVELS } from '../../constants/levels'
 import SeaAnimalIllustration from '../SeaAnimalIllustration'
+import { usePushNotifications } from '../../hooks/usePushNotifications'
 
 function Field({ label, value, onChange, type = 'number', min, max, hint }) {
   return (
@@ -28,8 +29,8 @@ function Field({ label, value, onChange, type = 'number', min, max, hint }) {
 
 export default function Settings() {
   const { settings, updateSettings } = useStore()
-  const { showAlert } = useAlerts()
   const bubbles = useStore(s => s.bubbles)
+  const { status: pushStatus, error: pushError, subscribe, unsubscribe } = usePushNotifications()
   const [saved, setSaved] = useState(false)
 
   function save() {
@@ -126,6 +127,66 @@ export default function Settings() {
             </div>
           )
         })}
+      </div>
+
+      {/* Push notifications */}
+      <div className="panel" style={{ padding: 20, marginBottom: 12 }}>
+        <div className="label-xs" style={{ color: 'var(--brass)', marginBottom: 12 }}>Notifications</div>
+
+        {pushStatus === 'unsupported' && (
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-3)', fontFamily: 'DM Sans, sans-serif' }}>
+            Push notifications aren't supported in this browser. Add the app to your home screen and open it from there.
+          </div>
+        )}
+
+        {pushStatus === 'denied' && (
+          <div style={{ fontSize: '0.8rem', color: 'var(--negative)', fontFamily: 'DM Sans, sans-serif' }}>
+            Notifications are blocked. Go to your device Settings → Safari → [this site] to re-enable.
+          </div>
+        )}
+
+        {(pushStatus === 'idle' || pushStatus === 'requesting') && pushStatus !== 'unsupported' && pushStatus !== 'denied' && (
+          <div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-2)', fontFamily: 'DM Sans, sans-serif', marginBottom: 14, lineHeight: 1.5 }}>
+              Get a daily shoulder work reminder at 7 pm. The ocean will come to you.
+            </div>
+            <button
+              onClick={subscribe}
+              disabled={pushStatus === 'requesting'}
+              className="btn-brass"
+              style={{ opacity: pushStatus === 'requesting' ? 0.6 : 1 }}
+            >
+              {pushStatus === 'requesting' ? 'Requesting permission…' : 'Enable notifications'}
+            </button>
+            {pushError && (
+              <div style={{ marginTop: 8, fontSize: '0.7rem', color: 'var(--negative)', fontFamily: 'DM Mono, monospace' }}>
+                {pushError}
+              </div>
+            )}
+          </div>
+        )}
+
+        {pushStatus === 'subscribed' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <div style={{
+                width: 8, height: 8, borderRadius: '50%',
+                background: 'var(--aqua)', boxShadow: '0 0 6px var(--aqua)',
+                flexShrink: 0,
+              }} />
+              <span style={{ fontSize: '0.8rem', color: 'var(--aqua)', fontFamily: 'DM Sans, sans-serif' }}>
+                Active — daily shoulder reminder at 7 pm
+              </span>
+            </div>
+            <button
+              onClick={unsubscribe}
+              className="btn-ghost"
+              style={{ fontSize: '0.65rem', padding: '6px 14px' }}
+            >
+              Disable
+            </button>
+          </div>
+        )}
       </div>
 
       <button onClick={save} className="btn-brass" style={{ width: '100%' }}>
