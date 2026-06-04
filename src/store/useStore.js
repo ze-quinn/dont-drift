@@ -12,6 +12,10 @@ const defaultSettings = {
   age: '',
   restingHR: '',
   sleepGoalHours: 7,
+  // Push notification preferences
+  notifHour: 19,
+  notifMinute: 0,
+  notifTopic: 'shoulder',
 }
 
 const defaultCheatAllowances = {

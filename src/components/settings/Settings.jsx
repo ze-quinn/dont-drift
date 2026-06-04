@@ -27,10 +27,40 @@ function Field({ label, value, onChange, type = 'number', min, max, hint }) {
   )
 }
 
+const NOTIF_TOPICS = [
+  { id: 'shoulder',   label: 'Shoulder work',     icon: '💪' },
+  { id: 'run',        label: 'Run reminder',       icon: '🏃' },
+  { id: 'swim',       label: 'Swim reminder',      icon: '🏊' },
+  { id: 'tennis',     label: 'Tennis reminder',    icon: '🎾' },
+  { id: 'motivation', label: 'General motivation', icon: '🌊' },
+  { id: 'habits',     label: 'Habits check-in',    icon: '✅' },
+]
+
+function TimeInput({ label, value, onChange, min, max }) {
+  return (
+    <div style={{ flex: 1 }}>
+      <div className="label-xs" style={{ marginBottom: 6 }}>{label}</div>
+      <input
+        type="number" value={value} min={min} max={max}
+        onChange={e => onChange(Math.min(max, Math.max(min, Number(e.target.value))))}
+        style={{
+          width: '100%', padding: '10px 12px', textAlign: 'center',
+          fontFamily: 'DM Mono, monospace', fontSize: '1.25rem', fontWeight: 700,
+          background: 'var(--bg-input)', border: '1px solid var(--border-dim)',
+          borderRadius: 1, color: 'var(--brass)', outline: 'none',
+          transition: 'border-color 0.15s',
+        }}
+        onFocus={e => e.target.style.borderColor = 'var(--border-strong)'}
+        onBlur={e  => e.target.style.borderColor = 'var(--border-dim)'}
+      />
+    </div>
+  )
+}
+
 export default function Settings() {
   const { settings, updateSettings } = useStore()
   const bubbles = useStore(s => s.bubbles)
-  const { status: pushStatus, error: pushError, subscribe, unsubscribe } = usePushNotifications()
+  const { status: pushStatus, error: pushError, prefsSaved, subscribe, unsubscribe, savePrefs } = usePushNotifications()
   const [saved, setSaved] = useState(false)
 
   function save() {
@@ -131,24 +161,37 @@ export default function Settings() {
 
       {/* Push notifications */}
       <div className="panel" style={{ padding: 20, marginBottom: 12 }}>
-        <div className="label-xs" style={{ color: 'var(--brass)', marginBottom: 12 }}>Notifications</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div className="label-xs" style={{ color: 'var(--brass)' }}>Notifications</div>
+          {pushStatus === 'subscribed' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{
+                width: 6, height: 6, borderRadius: '50%',
+                background: 'var(--aqua)', boxShadow: '0 0 5px var(--aqua)',
+              }} />
+              <span style={{ fontSize: '0.6rem', fontFamily: 'DM Sans, sans-serif', color: 'var(--aqua)', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>
+                Active
+              </span>
+            </div>
+          )}
+        </div>
 
         {pushStatus === 'unsupported' && (
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-3)', fontFamily: 'DM Sans, sans-serif' }}>
-            Push notifications aren't supported in this browser. Add the app to your home screen and open it from there.
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-3)', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.6 }}>
+            Push notifications require the app to be added to your home screen and opened from there.
           </div>
         )}
 
         {pushStatus === 'denied' && (
-          <div style={{ fontSize: '0.8rem', color: 'var(--negative)', fontFamily: 'DM Sans, sans-serif' }}>
-            Notifications are blocked. Go to your device Settings → Safari → [this site] to re-enable.
+          <div style={{ fontSize: '0.8rem', color: 'var(--negative)', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.6 }}>
+            Notifications are blocked. Go to Settings → Safari → this site to re-enable.
           </div>
         )}
 
-        {(pushStatus === 'idle' || pushStatus === 'requesting') && pushStatus !== 'unsupported' && pushStatus !== 'denied' && (
+        {(pushStatus === 'idle' || pushStatus === 'requesting') && (
           <div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-2)', fontFamily: 'DM Sans, sans-serif', marginBottom: 14, lineHeight: 1.5 }}>
-              Get a daily shoulder work reminder at 7 pm. The ocean will come to you.
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-2)', fontFamily: 'DM Sans, sans-serif', marginBottom: 16, lineHeight: 1.6 }}>
+              Get a daily reminder from the ocean — your time, your topic.
             </div>
             <button
               onClick={subscribe}
@@ -168,23 +211,84 @@ export default function Settings() {
 
         {pushStatus === 'subscribed' && (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <div style={{
-                width: 8, height: 8, borderRadius: '50%',
-                background: 'var(--aqua)', boxShadow: '0 0 6px var(--aqua)',
-                flexShrink: 0,
-              }} />
-              <span style={{ fontSize: '0.8rem', color: 'var(--aqua)', fontFamily: 'DM Sans, sans-serif' }}>
-                Active — daily shoulder reminder at 7 pm
-              </span>
+            {/* ── Time picker ── */}
+            <div style={{ marginBottom: 20 }}>
+              <div className="label-xs" style={{ marginBottom: 10 }}>Notify me at</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <TimeInput
+                  label="Hour (24h)"
+                  value={settings.notifHour ?? 19}
+                  onChange={v => updateSettings({ notifHour: v })}
+                  min={0} max={23}
+                />
+                <div style={{
+                  fontFamily: 'DM Mono, monospace', fontSize: '1.5rem', fontWeight: 300,
+                  color: 'var(--text-3)', paddingTop: 22, flexShrink: 0,
+                }}>:</div>
+                <TimeInput
+                  label="Minute"
+                  value={settings.notifMinute ?? 0}
+                  onChange={v => updateSettings({ notifMinute: v })}
+                  min={0} max={59}
+                />
+              </div>
+              <div style={{ marginTop: 8, fontFamily: 'DM Mono, monospace', fontSize: '0.75rem', color: 'var(--text-3)' }}>
+                {String(settings.notifHour ?? 19).padStart(2,'0')}:{String(settings.notifMinute ?? 0).padStart(2,'0')} IST daily
+              </div>
             </div>
-            <button
-              onClick={unsubscribe}
-              className="btn-ghost"
-              style={{ fontSize: '0.65rem', padding: '6px 14px' }}
-            >
-              Disable
-            </button>
+
+            {/* ── Topic selector ── */}
+            <div style={{ marginBottom: 20 }}>
+              <div className="label-xs" style={{ marginBottom: 10 }}>Remind me about</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {NOTIF_TOPICS.map(t => {
+                  const active = (settings.notifTopic ?? 'shoulder') === t.id
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => updateSettings({ notifTopic: t.id })}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '7px 13px',
+                        fontFamily: 'DM Sans, sans-serif', fontSize: '0.75rem', fontWeight: active ? 600 : 400,
+                        background: active ? 'rgba(201,168,76,0.12)' : 'transparent',
+                        border: active ? '1px solid var(--brass)' : '1px solid var(--border-dim)',
+                        borderRadius: 2, cursor: 'pointer',
+                        color: active ? 'var(--brass)' : 'var(--text-2)',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <span style={{ fontSize: '0.85rem' }}>{t.icon}</span>
+                      {t.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* ── Save + disable ── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button
+                onClick={() => savePrefs(settings.notifHour ?? 19, settings.notifMinute ?? 0, settings.notifTopic ?? 'shoulder')}
+                className="btn-brass"
+                style={{ flex: 1 }}
+              >
+                {prefsSaved ? '✓ Saved' : 'Save notification preferences'}
+              </button>
+              <button
+                onClick={unsubscribe}
+                className="btn-ghost"
+                style={{ fontSize: '0.65rem', padding: '8px 14px', flexShrink: 0 }}
+              >
+                Disable
+              </button>
+            </div>
+
+            {pushError && (
+              <div style={{ marginTop: 8, fontSize: '0.7rem', color: 'var(--negative)', fontFamily: 'DM Mono, monospace' }}>
+                {pushError}
+              </div>
+            )}
           </div>
         )}
       </div>
