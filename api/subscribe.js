@@ -1,7 +1,16 @@
 // POST /api/subscribe
-// Saves the browser's push subscription to Vercel KV so the cron can use it later.
+// Saves the browser's push subscription to Upstash Redis (REST API).
 
-import { kv } from '@vercel/kv'
+async function kvSet(key, value) {
+  const url   = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  const res = await fetch(`${url}/set/${encodeURIComponent(key)}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(value),
+  })
+  if (!res.ok) throw new Error(`Upstash set failed: ${res.status}`)
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -14,8 +23,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Store under a fixed key — single user app
-    await kv.set('push_subscription', JSON.stringify(subscription))
+    await kvSet('push_subscription', JSON.stringify(subscription))
     return res.status(200).json({ ok: true })
   } catch (err) {
     console.error('subscribe error:', err)

@@ -1,10 +1,8 @@
 // POST /api/send-push
-// Reads the stored subscription from KV and sends a push notification.
+// Reads the stored subscription from Upstash Redis and sends a push notification.
 // Called by the Vercel cron job at 7 pm IST (13:30 UTC) daily.
-// Can also be triggered manually for testing.
 
 import webpush from 'web-push'
-import { kv } from '@vercel/kv'
 
 const SHOULDER_MESSAGES = [
   { title: "Don't Drift", body: "Shoulder work window — 7 pm. Your rotator cuff is a long-term investment. 🫧" },
@@ -16,8 +14,27 @@ const SHOULDER_MESSAGES = [
   { title: "Don't Drift", body: "Barracudas are precise, fast, and consistent. Hit your shoulder routine. 🐟" },
 ]
 
+async function kvGet(key) {
+  const url   = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  const res = await fetch(`${url}/get/${encodeURIComponent(key)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error(`Upstash get failed: ${res.status}`)
+  const json = await res.json()
+  return json.result ?? null
+}
+
+async function kvDel(key) {
+  const url   = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  await fetch(`${url}/del/${encodeURIComponent(key)}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
 export default async function handler(req, res) {
-  // Allow GET for cron, POST for manual trigger
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
@@ -34,10 +51,10 @@ export default async function handler(req, res) {
 
   let raw
   try {
-    raw = await kv.get('push_subscription')
+    raw = await kvGet('push_subscription')
   } catch (err) {
     console.error('KV read error:', err)
-    return res.status(500).json({ error: 'Could not read subscription from KV' })
+    return res.status(500).json({ error: 'Could not read subscription from storage' })
   }
 
   if (!raw) {
@@ -46,22 +63,20 @@ export default async function handler(req, res) {
 
   const subscription = typeof raw === 'string' ? JSON.parse(raw) : raw
 
-  // Pick a message — rotate by day of week so it varies
   const msg = SHOULDER_MESSAGES[new Date().getDay() % SHOULDER_MESSAGES.length]
 
   try {
     await webpush.sendNotification(subscription, JSON.stringify({
       title: msg.title,
-      body: msg.body,
-      tag: 'shoulder-reminder',
-      url: '/',
+      body:  msg.body,
+      tag:   'shoulder-reminder',
+      url:   '/',
     }))
     return res.status(200).json({ ok: true, sent: msg.body })
   } catch (err) {
     console.error('Push send error:', err)
-    // 410 = subscription expired/invalid, clean up
     if (err.statusCode === 410) {
-      await kv.del('push_subscription')
+      await kvDel('push_subscription')
       return res.status(410).json({ error: 'Subscription expired. Re-enable notifications in the app.' })
     }
     return res.status(500).json({ error: err.message })
