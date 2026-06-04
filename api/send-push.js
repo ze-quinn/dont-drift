@@ -1,8 +1,9 @@
-// POST /api/send-push
-// Reads the stored subscription from Upstash Redis and sends a push notification.
-// Called by the Vercel cron job at 7 pm IST (13:30 UTC) daily.
+// GET /api/send-push
+// Reads the push subscription from Vercel Edge Config and sends the notification.
+// Called by Vercel cron at 13:30 UTC (7 pm IST) daily.
 
 import webpush from 'web-push'
+import { createClient } from '@vercel/edge-config'
 
 const SHOULDER_MESSAGES = [
   { title: "Don't Drift", body: "Shoulder work window — 7 pm. Your rotator cuff is a long-term investment. 🫧" },
@@ -13,26 +14,6 @@ const SHOULDER_MESSAGES = [
   { title: "Don't Drift", body: "Shoulder check-in — 7 pm. Small consistent effort > irregular intensity. 🫧" },
   { title: "Don't Drift", body: "Barracudas are precise, fast, and consistent. Hit your shoulder routine. 🐟" },
 ]
-
-async function kvGet(key) {
-  const url   = process.env.UPSTASH_REDIS_REST_URL
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN
-  const res = await fetch(`${url}/get/${encodeURIComponent(key)}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  if (!res.ok) throw new Error(`Upstash get failed: ${res.status}`)
-  const json = await res.json()
-  return json.result ?? null
-}
-
-async function kvDel(key) {
-  const url   = process.env.UPSTASH_REDIS_REST_URL
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN
-  await fetch(`${url}/del/${encodeURIComponent(key)}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-  })
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
@@ -49,20 +30,21 @@ export default async function handler(req, res) {
 
   webpush.setVapidDetails(vapidEmail, vapidPublic, vapidPrivate)
 
+  // Read subscription from Edge Config
   let raw
   try {
-    raw = await kvGet('push_subscription')
+    const client = createClient(process.env.EDGE_CONFIG)
+    raw = await client.get('push_subscription')
   } catch (err) {
-    console.error('KV read error:', err)
-    return res.status(500).json({ error: 'Could not read subscription from storage' })
+    console.error('Edge Config read error:', err)
+    return res.status(500).json({ error: 'Could not read from Edge Config' })
   }
 
   if (!raw) {
-    return res.status(404).json({ error: 'No subscription stored. Open the app and enable notifications first.' })
+    return res.status(404).json({ error: 'No subscription stored. Enable notifications in the app first.' })
   }
 
   const subscription = typeof raw === 'string' ? JSON.parse(raw) : raw
-
   const msg = SHOULDER_MESSAGES[new Date().getDay() % SHOULDER_MESSAGES.length]
 
   try {
@@ -75,10 +57,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, sent: msg.body })
   } catch (err) {
     console.error('Push send error:', err)
-    if (err.statusCode === 410) {
-      await kvDel('push_subscription')
-      return res.status(410).json({ error: 'Subscription expired. Re-enable notifications in the app.' })
-    }
     return res.status(500).json({ error: err.message })
   }
 }
