@@ -88,8 +88,17 @@ function BubbleFlash({ delta, onDone }) {
   )
 }
 
+// Rule keys that belong to duration-based activities (run/swim/tennis)
+const DURATION_RULEKEYS = {
+  run:    ['RUN_SHORT', 'RUN_MID', 'RUN_LONG'],
+  swim:   ['SWIM_SHORT', 'SWIM_MID', 'SWIM_LONG'],
+  tennis: ['TENNIS_SHORT', 'TENNIS_MID', 'TENNIS_LONG'],
+}
+
 export default function ActivityLog() {
-  const addBubbles = useStore(s => s.addBubbles)
+  const addBubbles   = useStore(s => s.addBubbles)
+  const isLoggedToday = useStore(s => s.isLoggedToday)
+  const todayLogs    = useStore(s => s.logs.filter(l => new Date(l.date).toDateString() === new Date().toDateString()))
   const { showAlert } = useAlertTrigger()
   const [tab, setTab]           = useState('activity')
   const [selected, setSelected] = useState(null)
@@ -98,6 +107,12 @@ export default function ActivityLog() {
   const [flash, setFlash]       = useState(null)
   const weekend    = isWeekend()
   const isSaturday = new Date().getDay() === 6
+
+  function isActivityLoggedToday(opt) {
+    if (opt.ruleKey) return isLoggedToday(opt.ruleKey)
+    const keys = DURATION_RULEKEYS[opt.id] ?? []
+    return keys.some(k => todayLogs.some(l => l.ruleKey === k))
+  }
 
   const currentOptions = tab === 'activity' ? ACTIVITY_OPTIONS : PENALTY_OPTIONS
   const selectedOpt    = currentOptions.find(o => o.id === selected)
@@ -184,9 +199,12 @@ export default function ActivityLog() {
       {/* Options grid — 1 col on very small, 2 col on 380px+ */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: 8, marginBottom: 20 }}>
         {currentOptions.map(opt => {
-          const isDisabled = opt.weekdayOnly && weekend
-          const preview    = opt.ruleKey ? BUBBLE_RULES[opt.ruleKey]?.delta : null
-          const isSelected = selected === opt.id
+          const isDisabled  = opt.weekdayOnly && weekend
+          const preview     = opt.ruleKey ? BUBBLE_RULES[opt.ruleKey]?.delta : null
+          const isSelected  = selected === opt.id
+          const doneToday   = isActivityLoggedToday(opt)
+          const accentColor = tab === 'penalty' ? 'var(--negative)' : 'var(--brass)'
+          const accentRgba  = tab === 'penalty' ? 'rgba(91,156,196,0.1)' : 'rgba(201,168,76,0.1)'
 
           return (
             <button
@@ -195,25 +213,36 @@ export default function ActivityLog() {
               disabled={isDisabled}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '10px 14px', textAlign: 'left',
-                background: isSelected ? 'rgba(201,168,76,0.1)' : 'transparent',
-                border: isSelected ? '1px solid var(--border-strong)' : '1px solid var(--border-dim)',
+                padding: '10px 14px', textAlign: 'left', position: 'relative',
+                background: isSelected ? accentRgba : doneToday ? 'rgba(201,168,76,0.05)' : 'transparent',
+                border: isSelected
+                  ? `1px solid ${accentColor}`
+                  : doneToday
+                  ? '1px solid rgba(201,168,76,0.35)'
+                  : '1px solid var(--border-dim)',
                 borderRadius: 1, cursor: isDisabled ? 'not-allowed' : 'pointer',
                 opacity: isDisabled ? 0.3 : 1,
                 transition: 'border-color 0.15s, background 0.15s',
               }}
             >
-              <span style={{ fontSize: '0.875rem', color: isSelected ? 'var(--text-1)' : 'var(--text-2)', fontFamily: 'DM Sans, sans-serif' }}>
+              <span style={{ fontSize: '0.875rem', color: isSelected ? 'var(--text-1)' : doneToday ? 'var(--text-2)' : 'var(--text-2)', fontFamily: 'DM Sans, sans-serif', flex: 1 }}>
                 {opt.label}
               </span>
-              {preview !== null && preview !== undefined && (
-                <span style={{
-                  fontFamily: 'DM Mono, monospace', fontSize: '0.75rem', fontWeight: 700, marginLeft: 8,
-                  color: preview >= 0 ? 'var(--brass)' : 'var(--negative)',
-                }}>
-                  {preview > 0 ? '+' : ''}{preview}
-                </span>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                {doneToday && (
+                  <svg viewBox="0 0 10 10" fill="none" width="9" height="9" style={{ opacity: 0.7 }}>
+                    <polyline points="1.5,5 4,7.5 8.5,2" stroke="var(--brass)" strokeWidth="1.5" strokeLinecap="square"/>
+                  </svg>
+                )}
+                {preview !== null && preview !== undefined && (
+                  <span style={{
+                    fontFamily: 'DM Mono, monospace', fontSize: '0.75rem', fontWeight: 700,
+                    color: preview >= 0 ? 'var(--brass)' : 'var(--negative)',
+                  }}>
+                    {preview > 0 ? '+' : ''}{preview}
+                  </span>
+                )}
+              </div>
             </button>
           )
         })}
