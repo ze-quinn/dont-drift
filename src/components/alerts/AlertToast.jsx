@@ -29,12 +29,9 @@ export default function AlertToast({ alert, onDismiss }) {
           {/* Animal emoji */}
           <div style={{
             flexShrink: 0,
-            width: 44, height: 44,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(201,168,76,0.06)',
-            borderRadius: 1,
-            border: '1px solid var(--border-dim)',
-            fontSize: '1.5rem',
+            fontSize: '1.75rem', lineHeight: 1,
+            alignSelf: 'center',
           }}>
             {alert.animal}
           </div>

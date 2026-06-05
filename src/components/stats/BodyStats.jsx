@@ -31,10 +31,11 @@ function Field({ label, value, onChange, unit }) {
           value={value}
           onChange={e => onChange(e.target.value)}
           style={{
-            flex: 1, padding: '8px 12px',
+            flex: 1, minWidth: 0, padding: '8px 12px',
             fontFamily: 'DM Mono, monospace', fontSize: '0.875rem',
             background: 'var(--bg-input)',
             border: '1px solid var(--border-dim)',
+            boxSizing: 'border-box',
             borderRadius: 1, color: 'var(--text-1)', outline: 'none',
             transition: 'border-color 0.15s',
           }}
@@ -74,7 +75,7 @@ export default function BodyStats() {
   }
 
   return (
-    <div style={{ padding: 24, maxWidth: 600, margin: '0 auto' }} className="animate-fade-in">
+    <div style={{ padding: 24, maxWidth: 600, width: '100%', boxSizing: 'border-box', margin: '0 auto' }} className="animate-fade-in">
       <div style={{ marginBottom: 32 }}>
         <div className="label-xs" style={{ marginBottom: 6 }}>Body</div>
         <h1 className="font-serif font-light" style={{ fontSize: '3rem', color: 'var(--text-1)', margin: 0, lineHeight: 1 }}>
