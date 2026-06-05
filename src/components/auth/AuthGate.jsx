@@ -95,15 +95,13 @@ export default function AuthGate({ children }) {
         <div style={{ marginBottom: 40, textAlign: 'center' }}>
           {/* Bubble cluster mark */}
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-              <circle cx="20" cy="26" r="12" fill="var(--brass)" opacity="0.9"/>
-              <circle cx="32" cy="20" r="8"  fill="var(--aqua)"  opacity="0.7"/>
-              <circle cx="14" cy="16" r="5"  fill="var(--brass)" opacity="0.5"/>
-              <circle cx="34" cy="32" r="4"  fill="var(--aqua)"  opacity="0.4"/>
-              <circle cx="22" cy="11" r="3"  fill="var(--brass)" opacity="0.35"/>
-              {/* specular dots */}
-              <circle cx="17" cy="22" r="1.5" fill="white" opacity="0.4"/>
-              <circle cx="30" cy="17" r="1"   fill="white" opacity="0.35"/>
+            <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+              <circle cx="22" cy="30" r="13"  fill="none" stroke="var(--brass)" strokeWidth="1.8" opacity="0.9"/>
+              <circle cx="34" cy="21" r="8.5" fill="none" stroke="var(--brass)" strokeWidth="1.5" opacity="0.6"/>
+              <circle cx="14" cy="18" r="5.5" fill="none" stroke="var(--brass)" strokeWidth="1.3" opacity="0.4"/>
+              <circle cx="18.5" cy="26" r="1.6" fill="var(--brass)" opacity="0.55"/>
+              <circle cx="31"   cy="18" r="1.1" fill="var(--brass)" opacity="0.4"/>
+              <circle cx="12"   cy="16" r="0.7" fill="var(--brass)" opacity="0.3"/>
             </svg>
           </div>
 
@@ -112,7 +110,7 @@ export default function AuthGate({ children }) {
           }}>
             Don't Drift
           </h1>
-          <div className="label-xs">Your ocean, any device</div>
+          <div className="label-xs">Just keep swimming</div>
         </div>
 
         {/* Art deco rule */}

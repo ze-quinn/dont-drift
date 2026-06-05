@@ -140,16 +140,12 @@ export function BottomTabBar() {
 function BubbleLogo() {
   return (
     <svg viewBox="0 0 36 36" width="34" height="34" fill="none">
-      {/* Large bubble */}
-      <circle cx="16" cy="21" r="9"   stroke="var(--brass)" strokeWidth="1.5" fill="none"/>
-      {/* Medium bubble */}
-      <circle cx="25" cy="14" r="6"   stroke="var(--brass)" strokeWidth="1.4" fill="none"/>
-      {/* Small bubble */}
-      <circle cx="10" cy="12" r="4"   stroke="var(--brass)" strokeWidth="1.2" fill="none"/>
-      {/* Specular dots */}
-      <circle cx="13.5" cy="18"  r="1.3" fill="var(--brass)" opacity="0.6"/>
-      <circle cx="23"   cy="12"  r="0.9" fill="var(--brass)" opacity="0.55"/>
-      <circle cx="8.5"  cy="10.5" r="0.6" fill="var(--brass)" opacity="0.5"/>
+      <circle cx="16" cy="21" r="9"   stroke="var(--brass)" strokeWidth="1.5" fill="none" opacity="0.9"/>
+      <circle cx="25" cy="14" r="6"   stroke="var(--brass)" strokeWidth="1.4" fill="none" opacity="0.6"/>
+      <circle cx="10" cy="12" r="4"   stroke="var(--brass)" strokeWidth="1.2" fill="none" opacity="0.4"/>
+      <circle cx="13.5" cy="18"   r="1.3" fill="var(--brass)" opacity="0.55"/>
+      <circle cx="23"   cy="12"   r="0.9" fill="var(--brass)" opacity="0.4"/>
+      <circle cx="8.5"  cy="10.5" r="0.6" fill="var(--brass)" opacity="0.3"/>
     </svg>
   )
 }
