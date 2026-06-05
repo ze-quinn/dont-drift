@@ -1,6 +1,93 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 
+const SEA_FACTS = [
+  { animal: '🐋', fact: 'Blue whales are the largest animals ever known to have lived — their hearts are the size of a small car.' },
+  { animal: '🐬', fact: 'Dolphins sleep with one eye open, resting one hemisphere of their brain at a time.' },
+  { animal: '🐙', fact: 'Octopuses have three hearts, blue blood, and can taste with their suckers.' },
+  { animal: '🦑', fact: 'Giant squids have the largest eyes of any animal — up to 30 cm wide, the size of a dinner plate.' },
+  { animal: '🪼', fact: 'Jellyfish have no brain, heart, or bones — and have existed for over 500 million years.' },
+  { animal: '🐡', fact: 'Pufferfish can inflate to three times their normal size by swallowing water.' },
+  { animal: '🐢', fact: 'Sea turtles can hold their breath for up to 7 hours while resting underwater.' },
+  { animal: '🦈', fact: "Sharks are older than trees — they've been swimming the oceans for 450 million years." },
+  { animal: '🐠', fact: "Clownfish can change sex — all clownfish are born male; the dominant one becomes female." },
+  { animal: '🦞', fact: "Lobsters communicate by peeing at each other from glands located in their faces." },
+  { animal: '🐚', fact: "A seahorse is the only animal where the male carries and gives birth to the young." },
+  { animal: '🌊', fact: "The ocean covers 71% of Earth's surface but over 80% of it remains unexplored." },
+]
+
+function LoadingScreen() {
+  const [factIdx] = useState(() => Math.floor(Math.random() * SEA_FACTS.length))
+  const { animal, fact } = SEA_FACTS[factIdx]
+
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      height: '100vh', background: 'var(--bg)',
+      padding: 32, textAlign: 'center',
+    }}>
+      {/* Pulsing bubble logo */}
+      <div style={{ position: 'relative', marginBottom: 36 }}>
+        <style>{`
+          @keyframes bubblePulse {
+            0%, 100% { transform: scale(1);    opacity: 0.9; }
+            50%       { transform: scale(1.08); opacity: 1;   }
+          }
+          @keyframes bubblePulse2 {
+            0%, 100% { transform: scale(1);    opacity: 0.55; }
+            50%       { transform: scale(1.06); opacity: 0.7;  }
+          }
+          @keyframes bubblePulse3 {
+            0%, 100% { transform: scale(1);    opacity: 0.35; }
+            50%       { transform: scale(1.05); opacity: 0.5;  }
+          }
+        `}</style>
+        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+          {/* Large ring */}
+          <circle cx="32" cy="46" r="20"
+            fill="none" stroke="var(--brass)" strokeWidth="2"
+            style={{ transformOrigin: '32px 46px', animation: 'bubblePulse 2.4s ease-in-out infinite' }}
+          />
+          {/* Medium ring */}
+          <circle cx="52" cy="30" r="13"
+            fill="none" stroke="var(--brass)" strokeWidth="1.8"
+            style={{ transformOrigin: '52px 30px', animation: 'bubblePulse2 2.4s ease-in-out 0.3s infinite' }}
+          />
+          {/* Small ring */}
+          <circle cx="20" cy="25" r="8"
+            fill="none" stroke="var(--brass)" strokeWidth="1.5"
+            style={{ transformOrigin: '20px 25px', animation: 'bubblePulse3 2.4s ease-in-out 0.6s infinite' }}
+          />
+          {/* Specular dots */}
+          <circle cx="26" cy="40" r="2"   fill="var(--brass)" opacity="0.55"/>
+          <circle cx="48" cy="27" r="1.4" fill="var(--brass)" opacity="0.4"/>
+          <circle cx="16" cy="22" r="0.9" fill="var(--brass)" opacity="0.3"/>
+        </svg>
+      </div>
+
+      {/* Fact */}
+      <div style={{ maxWidth: 320 }}>
+        <div style={{ fontSize: '2rem', marginBottom: 16, lineHeight: 1 }}>{animal}</div>
+        <p style={{
+          fontFamily: 'DM Sans, sans-serif', fontSize: '0.9rem',
+          color: 'var(--text-2)', lineHeight: 1.65, margin: 0,
+        }}>
+          {fact}
+        </p>
+      </div>
+
+      {/* Loading label */}
+      <div style={{
+        marginTop: 40, fontFamily: 'DM Mono, monospace',
+        fontSize: '0.65rem', color: 'var(--text-3)', letterSpacing: '0.2em',
+      }}>
+        loading…
+      </div>
+    </div>
+  )
+}
+
 export default function AuthGate({ children }) {
   const [session,  setSession]  = useState(undefined) // undefined = loading
   const [mode,     setMode]     = useState('signin')  // 'signin' | 'signup'
@@ -34,19 +121,7 @@ export default function AuthGate({ children }) {
   }, [])
 
   // Still checking session
-  if (session === undefined) {
-    return (
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        height: '100vh', background: 'var(--bg)',
-      }}>
-        <div style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.7rem',
-          color: 'var(--text-3)', letterSpacing: '0.15em' }}>
-          loading…
-        </div>
-      </div>
-    )
-  }
+  if (session === undefined) return <LoadingScreen />
 
   // Logged in — render the app
   if (session) return children

@@ -96,9 +96,11 @@ const DURATION_RULEKEYS = {
 }
 
 export default function ActivityLog() {
-  const addBubbles   = useStore(s => s.addBubbles)
+  const addBubbles    = useStore(s => s.addBubbles)
   const isLoggedToday = useStore(s => s.isLoggedToday)
-  const todayLogs    = useStore(s => s.logs.filter(l => new Date(l.date).toDateString() === new Date().toDateString()))
+  const allLogs       = useStore(s => s.logs)
+  const todayStr      = new Date().toDateString()
+  const todayLogs     = allLogs.filter(l => new Date(l.date).toDateString() === todayStr)
   const { showAlert } = useAlertTrigger()
   const [tab, setTab]           = useState('activity')
   const [selected, setSelected] = useState(null)
