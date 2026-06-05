@@ -11,9 +11,26 @@ export default function AuthGate({ children }) {
   const [message,  setMessage]  = useState(null)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
+    // If Supabase isn't configured, skip auth entirely
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      setSession(null) // null = no session → show login (or we could skip to app)
+      console.warn('Supabase env vars missing — auth disabled')
+      return
+    }
+
+    // Timeout safety — if getSession hangs (bad keys etc), show login after 5s
+    const timeout = setTimeout(() => setSession(null), 5000)
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(timeout)
+      setSession(session)
+    }).catch(() => {
+      clearTimeout(timeout)
+      setSession(null)
+    })
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
-    return () => subscription.unsubscribe()
+    return () => { subscription.unsubscribe(); clearTimeout(timeout) }
   }, [])
 
   // Still checking session
