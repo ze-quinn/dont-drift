@@ -367,7 +367,7 @@ export default function ActivityLog() {
         <div className="label-xs" style={{ marginBottom: 6 }}>Record</div>
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
           <h1 className="font-serif font-light" style={{ fontSize: '3rem', color: 'var(--text-1)', margin: 0, lineHeight: 1 }}>
-            Log Activity
+            Log
           </h1>
           <button
             onClick={() => { setEditMode(e => !e); setSelected(null) }}
