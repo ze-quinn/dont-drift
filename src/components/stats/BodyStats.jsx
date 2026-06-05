@@ -23,15 +23,15 @@ function StatCard({ label, value, unit, sub }) {
 
 function Field({ label, value, onChange, unit }) {
   return (
-    <div>
+    <div style={{ minWidth: 0, overflow: 'hidden' }}>
       <label className="label-xs" style={{ display: 'block', marginBottom: 6 }}>{label}</label>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
         <input
           type="number"
           value={value}
           onChange={e => onChange(e.target.value)}
           style={{
-            flex: 1, minWidth: 0, padding: '8px 12px',
+            flex: 1, minWidth: 0, width: '100%', padding: '8px 10px',
             fontFamily: 'DM Mono, monospace', fontSize: '0.875rem',
             background: 'var(--bg-input)',
             border: '1px solid var(--border-dim)',
@@ -42,7 +42,7 @@ function Field({ label, value, onChange, unit }) {
           onFocus={e => e.target.style.borderColor = 'var(--border-strong)'}
           onBlur={e  => e.target.style.borderColor = 'var(--border-dim)'}
         />
-        {unit && <span className="label-xs" style={{ flexShrink: 0 }}>{unit}</span>}
+        {unit && <span className="label-xs" style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>{unit}</span>}
       </div>
     </div>
   )
@@ -75,7 +75,7 @@ export default function BodyStats() {
   }
 
   return (
-    <div style={{ padding: 24, maxWidth: 600, width: '100%', boxSizing: 'border-box', margin: '0 auto' }} className="animate-fade-in">
+    <div style={{ padding: 24, maxWidth: 600, width: '100%', boxSizing: 'border-box', margin: '0 auto', overflowX: 'hidden' }} className="animate-fade-in">
       <div style={{ marginBottom: 32 }}>
         <div className="label-xs" style={{ marginBottom: 6 }}>Body</div>
         <h1 className="font-serif font-light" style={{ fontSize: '3rem', color: 'var(--text-1)', margin: 0, lineHeight: 1 }}>
@@ -104,7 +104,7 @@ export default function BodyStats() {
       {/* Body data */}
       <div className="panel" style={{ padding: 20, marginBottom: 16 }}>
         <div className="label-xs" style={{ marginBottom: 16 }}>Body data</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12, marginBottom: 16 }}>
           <Field label="Height"         value={settings.height}       onChange={v => updateSettings({ height: v })}       unit="cm"/>
           <Field label="Current weight" value={localWeight}            onChange={setLocalWeight}                           unit="kg"/>
           <Field label="Target weight"  value={settings.targetWeight} onChange={v => updateSettings({ targetWeight: v })} unit="kg"/>
@@ -150,7 +150,7 @@ export default function BodyStats() {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12, marginBottom: 16 }}>
           <Field label="Steps"           value={manualHealth.steps}          onChange={v => setManualHealth(h => ({...h, steps: v}))}          unit="steps"/>
           <Field label="Active calories" value={manualHealth.activeCalories} onChange={v => setManualHealth(h => ({...h, activeCalories: v}))} unit="kcal"/>
           <Field label="Sleep"           value={manualHealth.sleepHours}     onChange={v => setManualHealth(h => ({...h, sleepHours: v}))}     unit="hrs"/>

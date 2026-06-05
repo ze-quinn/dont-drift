@@ -31,7 +31,7 @@ export default function Shell() {
           <main
             key={location.pathname}
             className="flex-1 overflow-y-auto animate-page-in"
-            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            style={{ paddingBottom: 'env(safe-area-inset-bottom)', overflowX: 'hidden' }}
           >
             <Outlet />
           </main>
