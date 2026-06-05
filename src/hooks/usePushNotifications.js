@@ -75,13 +75,14 @@ export function usePushNotifications() {
     }
   }
 
-  // Save time + topic preferences to the server (Edge Config)
-  async function savePrefs(hour, minute, topic) {
+  // Save notification schedules to the server (Edge Config)
+  // schedules: [{ id, hour, minute, topic }, ...]
+  async function savePrefs(schedules) {
     try {
       const res = await fetch('/api/save-prefs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hour, minute, topic }),
+        body: JSON.stringify({ schedules }),
       })
       if (!res.ok) throw new Error(`Server error: ${res.status}`)
       setPrefsSaved(true)

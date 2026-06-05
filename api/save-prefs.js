@@ -1,6 +1,5 @@
 // POST /api/save-prefs
-// Saves notification preferences (time + topic) to Vercel Edge Config.
-// Called when the user updates their notification settings.
+// Saves notification schedules (array of { id, hour, minute, topic }) to Vercel Edge Config.
 
 async function edgeConfigUpsert(items) {
   const edgeConfigId = process.env.EDGE_CONFIG_ID
@@ -22,18 +21,27 @@ async function edgeConfigUpsert(items) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { hour, minute, topic } = req.body ?? {}
+  const { schedules } = req.body ?? {}
 
-  if (hour == null || minute == null || !topic) {
-    return res.status(400).json({ error: 'hour, minute and topic are required' })
+  if (!Array.isArray(schedules) || schedules.length === 0) {
+    return res.status(400).json({ error: 'schedules array required' })
   }
-  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-    return res.status(400).json({ error: 'Invalid time values' })
+  if (schedules.length > 10) {
+    return res.status(400).json({ error: 'Maximum 10 notification schedules' })
+  }
+
+  for (const s of schedules) {
+    if (s.hour == null || s.minute == null || !s.topic) {
+      return res.status(400).json({ error: 'Each schedule needs hour, minute, topic' })
+    }
+    if (s.hour < 0 || s.hour > 23 || s.minute < 0 || s.minute > 59) {
+      return res.status(400).json({ error: `Invalid time: ${s.hour}:${s.minute}` })
+    }
   }
 
   try {
     await edgeConfigUpsert([
-      { operation: 'upsert', key: 'notif_prefs', value: JSON.stringify({ hour, minute, topic }) },
+      { operation: 'upsert', key: 'notif_prefs', value: JSON.stringify(schedules) },
     ])
     return res.status(200).json({ ok: true })
   } catch (err) {

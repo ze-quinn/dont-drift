@@ -116,30 +116,44 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: 'No subscription stored. Enable notifications in the app first.' })
   }
 
-  // Parse prefs — fall back to 19:00 shoulder
-  const prefs = rawPrefs
-    ? (typeof rawPrefs === 'string' ? JSON.parse(rawPrefs) : rawPrefs)
-    : { hour: 19, minute: 0, topic: 'shoulder' }
-
-  // Time-window check — skip if cron fired but it's not the right time
-  // (bypass check for manual POST triggers)
-  if (req.method === 'GET' && !isWithinWindow(prefs.hour, prefs.minute)) {
-    return res.status(200).json({ ok: true, skipped: true, reason: 'Outside notification window' })
+  // Parse prefs — support both legacy single object and new array format
+  let schedules
+  if (rawPrefs) {
+    const parsed = typeof rawPrefs === 'string' ? JSON.parse(rawPrefs) : rawPrefs
+    schedules = Array.isArray(parsed) ? parsed : [parsed]
+  } else {
+    schedules = [{ hour: 19, minute: 0, topic: 'shoulder' }]
   }
 
   const subscription = typeof rawSub === 'string' ? JSON.parse(rawSub) : rawSub
-  const msg = pickMessage(prefs.topic)
 
-  try {
-    await webpush.sendNotification(subscription, JSON.stringify({
-      title: msg.title,
-      body:  msg.body,
-      tag:   'dont-drift-daily',
-      url:   '/',
-    }))
-    return res.status(200).json({ ok: true, sent: msg.body })
-  } catch (err) {
-    console.error('Push send error:', err)
-    return res.status(500).json({ error: err.message })
+  // For GET (cron): send only the schedules that match the current time window
+  // For POST (manual trigger): send all
+  const toSend = req.method === 'GET'
+    ? schedules.filter(s => isWithinWindow(s.hour, s.minute))
+    : schedules
+
+  if (req.method === 'GET' && toSend.length === 0) {
+    return res.status(200).json({ ok: true, skipped: true, reason: 'Outside all notification windows' })
   }
+
+  const results = []
+  for (const sched of toSend) {
+    const msg = pickMessage(sched.topic)
+    try {
+      await webpush.sendNotification(subscription, JSON.stringify({
+        title: msg.title,
+        body:  msg.body,
+        tag:   `dont-drift-${sched.id ?? sched.topic}`,
+        url:   '/',
+      }))
+      results.push({ ok: true, topic: sched.topic, sent: msg.body })
+    } catch (err) {
+      console.error('Push send error:', err)
+      results.push({ ok: false, topic: sched.topic, error: err.message })
+    }
+  }
+
+  const allFailed = results.every(r => !r.ok)
+  return res.status(allFailed ? 500 : 200).json({ ok: !allFailed, results })
 }

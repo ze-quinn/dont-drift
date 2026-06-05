@@ -12,6 +12,7 @@ const defaultSettings = {
   age: '',
   restingHR: '',
   sleepGoalHours: 7,
+  // legacy single-notif fields kept for migration only
   notifHour: 19,
   notifMinute: 0,
   notifTopic: 'shoulder',
@@ -43,6 +44,12 @@ export const useStore = create(
       settings: defaultSettings,
       healthData: defaultHealthData,
       seenAlertIds: [],
+
+      // ── Notification schedules ────────────────────────────────────
+      // array of { id, hour, minute, topic } — one entry per notification slot
+      notifSchedules: [{ id: 'default', hour: 19, minute: 0, topic: 'shoulder' }],
+
+      setNotifSchedules: (schedules) => set({ notifSchedules: schedules }),
 
       // ── Custom activity/habit/penalty config ──────────────────────
       // custom items added by user
@@ -205,22 +212,35 @@ export const useStore = create(
     }),
     {
       name: 'dont-drift-store',
-      version: 2,
       migrate: (old, v) => {
-        // v1 → v2: drop old cheatAllowances shape, introduce new keys
+        let state = { ...old }
         if (v < 2) {
-          return {
-            ...old,
-            customActivities:  old.customActivities  ?? [],
-            removedActivities: old.removedActivities ?? [],
-            customHabits:      old.customHabits      ?? [],
-            removedHabits:     old.removedHabits     ?? [],
-            cheatConfig:       old.cheatConfig       ?? DEFAULT_CHEAT_CONFIG,
-            cheatUsage:        old.cheatUsage        ?? { month: '', counts: {} },
+          state = {
+            ...state,
+            customActivities:  state.customActivities  ?? [],
+            removedActivities: state.removedActivities ?? [],
+            customHabits:      state.customHabits      ?? [],
+            removedHabits:     state.removedHabits     ?? [],
+            cheatConfig:       state.cheatConfig       ?? DEFAULT_CHEAT_CONFIG,
+            cheatUsage:        state.cheatUsage        ?? { month: '', counts: {} },
           }
         }
-        return old
+        if (v < 3) {
+          // migrate single notif prefs → schedules array
+          const s = state.settings ?? {}
+          state = {
+            ...state,
+            notifSchedules: state.notifSchedules ?? [{
+              id: 'default',
+              hour:   s.notifHour   ?? 19,
+              minute: s.notifMinute ?? 0,
+              topic:  s.notifTopic  ?? 'shoulder',
+            }],
+          }
+        }
+        return state
       },
+      version: 3,
     }
   )
 )

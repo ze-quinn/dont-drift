@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useStore } from '../../store/useStore'
 import { LEVELS } from '../../constants/levels'
 import SeaAnimalIllustration from '../SeaAnimalIllustration'
@@ -54,6 +54,130 @@ function TimeInput({ label, value, onChange, min, max }) {
         onFocus={e => e.target.style.borderColor = 'var(--border-strong)'}
         onBlur={e  => e.target.style.borderColor = 'var(--border-dim)'}
       />
+    </div>
+  )
+}
+
+// ── Multi-schedule notification component ─────────────────────────────────────
+function NotifSchedules({ savePrefs, prefsSaved, pushError, unsubscribe }) {
+  const notifSchedules    = useStore(s => s.notifSchedules)
+  const setNotifSchedules = useStore(s => s.setNotifSchedules)
+
+  // Local copy for editing before saving
+  const [schedules, setSchedules] = useState(() =>
+    (notifSchedules ?? [{ id: 'default', hour: 19, minute: 0, topic: 'shoulder' }])
+      .map(s => ({ ...s }))
+  )
+
+  function updateSchedule(idx, key, val) {
+    setSchedules(prev => prev.map((s, i) => i === idx ? { ...s, [key]: val } : s))
+  }
+
+  function addSchedule() {
+    if (schedules.length >= 8) return
+    setSchedules(prev => [...prev, {
+      id: `notif_${Date.now()}`,
+      hour: 8, minute: 0, topic: 'motivation',
+    }])
+  }
+
+  function removeSchedule(idx) {
+    if (schedules.length <= 1) return
+    setSchedules(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  function handleSave() {
+    setNotifSchedules(schedules)
+    savePrefs(schedules)
+  }
+
+  return (
+    <div>
+      {schedules.map((sched, idx) => (
+        <div key={sched.id ?? idx} style={{
+          marginBottom: 16, padding: 14,
+          border: '1px solid var(--border-dim)', borderRadius: 1,
+          background: 'rgba(201,168,76,0.03)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <span className="label-xs" style={{ color: 'var(--brass)' }}>
+              Reminder {schedules.length > 1 ? idx + 1 : ''}
+            </span>
+            {schedules.length > 1 && (
+              <button onClick={() => removeSchedule(idx)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 2 }}>
+                <svg viewBox="0 0 10 10" fill="none" width="10" height="10">
+                  <line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" strokeWidth="1.5"/>
+                  <line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" strokeWidth="1.5"/>
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* Time row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+            <TimeInput label="Hour (24h)" value={sched.hour}
+              onChange={v => updateSchedule(idx, 'hour', v)} min={0} max={23} />
+            <div style={{ fontFamily: 'DM Mono, monospace', fontSize: '1.5rem', fontWeight: 300, color: 'var(--text-3)', paddingTop: 22, flexShrink: 0 }}>:</div>
+            <TimeInput label="Minute" value={sched.minute}
+              onChange={v => updateSchedule(idx, 'minute', v)} min={0} max={59} />
+          </div>
+          <div style={{ marginBottom: 12, fontFamily: 'DM Mono, monospace', fontSize: '0.7rem', color: 'var(--text-3)' }}>
+            {String(sched.hour).padStart(2,'0')}:{String(sched.minute).padStart(2,'0')} IST daily
+          </div>
+
+          {/* Topic */}
+          <div className="label-xs" style={{ marginBottom: 8 }}>Remind me about</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {NOTIF_TOPICS.map(t => {
+              const active = sched.topic === t.id
+              return (
+                <button key={t.id} onClick={() => updateSchedule(idx, 'topic', t.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px',
+                    fontFamily: 'DM Sans, sans-serif', fontSize: '0.7rem', fontWeight: active ? 600 : 400,
+                    background: active ? 'rgba(201,168,76,0.12)' : 'transparent',
+                    border: active ? '1px solid var(--brass)' : '1px solid var(--border-dim)',
+                    borderRadius: 2, cursor: 'pointer',
+                    color: active ? 'var(--brass)' : 'var(--text-2)',
+                    transition: 'all 0.15s',
+                  }}>
+                  <span style={{ fontSize: '0.8rem' }}>{t.icon}</span>
+                  {t.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+
+      {schedules.length < 8 && (
+        <button onClick={addSchedule}
+          style={{
+            width: '100%', marginBottom: 16, padding: '10px',
+            border: '1px dashed var(--brass)', borderRadius: 1, background: 'transparent',
+            color: 'var(--brass)', fontFamily: 'DM Sans, sans-serif', fontSize: '0.8rem',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}>
+          <span style={{ fontSize: '1rem' }}>+</span> Add another reminder
+        </button>
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button onClick={handleSave} className="btn-brass" style={{ flex: 1 }}>
+          {prefsSaved ? '✓ Saved' : 'Save notification preferences'}
+        </button>
+        <button onClick={unsubscribe} className="btn-ghost"
+          style={{ fontSize: '0.65rem', padding: '8px 14px', flexShrink: 0 }}>
+          Disable
+        </button>
+      </div>
+
+      {pushError && (
+        <div style={{ marginTop: 8, fontSize: '0.7rem', color: 'var(--negative)', fontFamily: 'DM Mono, monospace' }}>
+          {pushError}
+        </div>
+      )}
     </div>
   )
 }
@@ -218,86 +342,12 @@ export default function Settings() {
         )}
 
         {pushStatus === 'subscribed' && (
-          <div>
-            {/* ── Time picker ── */}
-            <div style={{ marginBottom: 20 }}>
-              <div className="label-xs" style={{ marginBottom: 10 }}>Notify me at</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <TimeInput
-                  label="Hour (24h)"
-                  value={settings.notifHour ?? 19}
-                  onChange={v => updateSettings({ notifHour: v })}
-                  min={0} max={23}
-                />
-                <div style={{
-                  fontFamily: 'DM Mono, monospace', fontSize: '1.5rem', fontWeight: 300,
-                  color: 'var(--text-3)', paddingTop: 22, flexShrink: 0,
-                }}>:</div>
-                <TimeInput
-                  label="Minute"
-                  value={settings.notifMinute ?? 0}
-                  onChange={v => updateSettings({ notifMinute: v })}
-                  min={0} max={59}
-                />
-              </div>
-              <div style={{ marginTop: 8, fontFamily: 'DM Mono, monospace', fontSize: '0.75rem', color: 'var(--text-3)' }}>
-                {String(settings.notifHour ?? 19).padStart(2,'0')}:{String(settings.notifMinute ?? 0).padStart(2,'0')} IST daily
-              </div>
-            </div>
-
-            {/* ── Topic selector ── */}
-            <div style={{ marginBottom: 20 }}>
-              <div className="label-xs" style={{ marginBottom: 10 }}>Remind me about</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {NOTIF_TOPICS.map(t => {
-                  const active = (settings.notifTopic ?? 'shoulder') === t.id
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => updateSettings({ notifTopic: t.id })}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        padding: '7px 13px',
-                        fontFamily: 'DM Sans, sans-serif', fontSize: '0.75rem', fontWeight: active ? 600 : 400,
-                        background: active ? 'rgba(201,168,76,0.12)' : 'transparent',
-                        border: active ? '1px solid var(--brass)' : '1px solid var(--border-dim)',
-                        borderRadius: 2, cursor: 'pointer',
-                        color: active ? 'var(--brass)' : 'var(--text-2)',
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      <span style={{ fontSize: '0.85rem' }}>{t.icon}</span>
-                      {t.label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* ── Save + disable ── */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button
-                onClick={() => savePrefs(settings.notifHour ?? 19, settings.notifMinute ?? 0, settings.notifTopic ?? 'shoulder')}
-                className="btn-brass"
-                style={{ flex: 1 }}
-              >
-                {prefsSaved ? '✓ Saved' : 'Save notification preferences'}
-              </button>
-              <button
-                onClick={unsubscribe}
-                className="btn-ghost"
-                style={{ fontSize: '0.65rem', padding: '8px 14px', flexShrink: 0 }}
-              >
-                Disable
-              </button>
-            </div>
-
-            {pushError && (
-              <div style={{ marginTop: 8, fontSize: '0.7rem', color: 'var(--negative)', fontFamily: 'DM Mono, monospace' }}>
-                {pushError}
-              </div>
-            )}
-          </div>
+          <NotifSchedules
+            savePrefs={savePrefs}
+            prefsSaved={prefsSaved}
+            pushError={pushError}
+            unsubscribe={unsubscribe}
+          />
         )}
       </div>
 
