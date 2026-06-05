@@ -60,18 +60,14 @@ export default function Dashboard() {
         {/* ── Left column ── */}
         <div className="lg:col-span-1 space-y-5">
 
-          {/* Gauge panel with large animal watermark */}
-          <div className="panel p-5 flex flex-col items-center relative overflow-hidden">
-            {/* Sea animal watermark */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 0 }}>
-              <SeaAnimalIllustration animal={level.name} size={160} color="var(--aqua)" opacity={0.07} />
-            </div>
+          {/* Gauge panel */}
+          <div className="panel p-5 flex flex-col items-center">
             {/* Gauge */}
-            <div style={{ position: 'relative', zIndex: 1 }}>
+            <div>
               <BubbleGauge />
             </div>
             {/* Level name beneath gauge */}
-            <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', marginTop: 2, paddingBottom: 4 }}>
+            <div style={{ textAlign: 'center', marginTop: 2, paddingBottom: 4 }}>
               <div className="font-serif font-light" style={{ fontSize: '1.1rem', color: 'var(--brass)', letterSpacing: '0.04em' }}>
                 {level.name}
               </div>
