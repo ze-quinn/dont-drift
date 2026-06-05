@@ -87,7 +87,7 @@ export default function BodyStats() {
       </div>
 
       {/* Computed stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 12, marginBottom: 20 }}>
         <StatCard label="BMI"      value={bmi} sub={bmi ? (parseFloat(bmi) < 18.5 ? 'Underweight' : parseFloat(bmi) < 25 ? 'Healthy' : 'Overweight') : null}/>
         <StatCard label="BMR"      value={bmr} unit="kcal"/>
         <StatCard label="To target" value={distanceToTarget ? Math.abs(distanceToTarget) : null} unit="kg" sub={distanceToTarget ? (parseFloat(distanceToTarget) > 0 ? 'to lose' : 'to gain') : null}/>
@@ -129,7 +129,7 @@ export default function BodyStats() {
         </p>
 
         {healthData.steps && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8, marginBottom: 16 }}>
             {[
               { label: 'Steps',       value: healthData.steps?.toLocaleString() },
               { label: 'Active cal',  value: healthData.activeCalories },

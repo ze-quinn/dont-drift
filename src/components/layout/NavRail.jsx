@@ -39,7 +39,7 @@ export default function NavRail() {
 
   return (
     <nav
-      className="hidden lg:flex flex-col items-center py-5 gap-0.5 w-[62px] shrink-0"
+      className="flex flex-col items-center py-5 gap-0.5 w-[52px] lg:w-[62px] shrink-0"
       style={{
         borderRight: '1px solid var(--border-dim)',
         background: 'var(--bg-panel-alt)',

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
-import NavRail, { BottomTabBar } from './NavRail'
+import NavRail from './NavRail'
 import BubbleBar from './BubbleBar'
 import AlertToast from '../alerts/AlertToast'
 import { useAlerts } from '../../hooks/useAlerts'
@@ -36,8 +36,6 @@ export default function Shell() {
             <Outlet />
           </main>
 
-          {/* Bottom tab bar — mobile only */}
-          <BottomTabBar />
         </div>
 
         {currentAlert && (

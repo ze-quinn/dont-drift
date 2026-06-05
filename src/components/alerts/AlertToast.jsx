@@ -1,21 +1,6 @@
 import { useEffect } from 'react'
-import SeaAnimalIllustration from '../SeaAnimalIllustration'
-import { getLevelForBubbles } from '../../constants/levels'
-import { useStore } from '../../store/useStore'
-
-// Map alert animal emoji to the closest sea animal illustration name
-const ANIMAL_MAP = {
-  '🐙': 'Octopus', '🐋': 'Orca', '🐳': 'Blue Whale', '🐟': 'Barracuda',
-  '🐡': 'Pufferfish', '🐬': 'Octopus', '🌊': 'Seahorse', '🐢': 'Manta Ray',
-  '🦞': 'Barracuda', '🪼': 'Seahorse', '🐠': 'Pufferfish', '🦑': 'Octopus',
-  '⭐': 'Seahorse', '🐚': 'Seahorse', '🐍': 'Barracuda',
-}
 
 export default function AlertToast({ alert, onDismiss }) {
-  const bubbles    = useStore(s => s.bubbles)
-  const level      = getLevelForBubbles(bubbles)
-  const animalName = ANIMAL_MAP[alert.animal] ?? level.name
-
   useEffect(() => {
     const timer = setTimeout(onDismiss, 9000)
     return () => clearTimeout(timer)
@@ -25,7 +10,7 @@ export default function AlertToast({ alert, onDismiss }) {
     <div
       className="fixed z-50 animate-slide-in"
       style={{
-        bottom: 80,          // above bottom tab bar on mobile
+        bottom: 24,
         left: '50%',
         transform: 'translateX(-50%)',
         width: 'min(420px, calc(100vw - 32px))',
@@ -41,21 +26,17 @@ export default function AlertToast({ alert, onDismiss }) {
       <div style={{ padding: '16px 18px 14px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
 
-          {/* Sea animal illustration */}
+          {/* Animal emoji */}
           <div style={{
             flexShrink: 0,
-            width: 48, height: 48,
+            width: 44, height: 44,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: 'rgba(201,168,76,0.06)',
             borderRadius: 1,
             border: '1px solid var(--border-dim)',
+            fontSize: '1.5rem',
           }}>
-            <SeaAnimalIllustration
-              animal={animalName}
-              size={36}
-              color="var(--aqua)"
-              opacity={0.85}
-            />
+            {alert.animal}
           </div>
 
           {/* Text */}
