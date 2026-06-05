@@ -61,27 +61,21 @@ export default function Dashboard() {
         <div className="lg:col-span-1 space-y-5">
 
           {/* Gauge panel with large animal watermark */}
-          <div
-            className="panel p-6 flex flex-col items-center relative overflow-hidden"
-            style={{ minHeight: 340 }}
-          >
-            {/* Sea animal watermark — large, centred, behind gauge */}
-            <div
-              className="absolute inset-0 flex items-center justify-center pointer-events-none"
-              style={{ zIndex: 0 }}
-            >
-              <SeaAnimalIllustration
-                animal={level.name}
-                size={180}
-                color="var(--aqua)"
-                opacity={0.07}
-                style={{ transform: 'translateY(24px)' }}
-              />
+          <div className="panel p-5 flex flex-col items-center relative overflow-hidden">
+            {/* Sea animal watermark */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 0 }}>
+              <SeaAnimalIllustration animal={level.name} size={160} color="var(--aqua)" opacity={0.07} />
             </div>
-
-            {/* Gauge on top */}
+            {/* Gauge */}
             <div style={{ position: 'relative', zIndex: 1 }}>
               <BubbleGauge />
+            </div>
+            {/* Level name beneath gauge */}
+            <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', marginTop: 2, paddingBottom: 4 }}>
+              <div className="font-serif font-light" style={{ fontSize: '1.1rem', color: 'var(--brass)', letterSpacing: '0.04em' }}>
+                {level.name}
+              </div>
+              <div className="label-xs" style={{ marginTop: 2 }}>Level {level.level}</div>
             </div>
           </div>
 
@@ -115,11 +109,14 @@ export default function Dashboard() {
             </div>
 
             {recentLogs.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="font-serif text-2xl font-light mb-2" style={{ color: 'var(--text-3)' }}>
+              <div style={{ textAlign: 'center', padding: '24px 16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12, opacity: 0.35 }}>
+                  <SeaAnimalIllustration animal={level.name} size={64} color="var(--aqua)" opacity={1} />
+                </div>
+                <div className="font-serif font-light" style={{ fontSize: '1.25rem', color: 'var(--text-3)', marginBottom: 6 }}>
                   Nothing logged yet
                 </div>
-                <div className="label-xs">Use the Log tab to record an activity</div>
+                <div className="label-xs">The ocean is waiting — log your first activity</div>
               </div>
             ) : (
               <div>

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
-import { Outlet } from 'react-router-dom'
-import NavRail from './NavRail'
+import { Outlet, useLocation } from 'react-router-dom'
+import NavRail, { BottomTabBar } from './NavRail'
 import BubbleBar from './BubbleBar'
 import AlertToast from '../alerts/AlertToast'
 import { useAlerts } from '../../hooks/useAlerts'
@@ -10,7 +10,8 @@ import { useSync } from '../../hooks/useSync'
 
 export default function Shell() {
   const { currentAlert, showAlert, dismissAlert } = useAlerts()
-  const theme = useStore(s => s.settings.theme ?? 'dark')
+  const theme    = useStore(s => s.settings.theme ?? 'dark')
+  const location = useLocation()
   useSync()
 
   useEffect(() => {
@@ -20,13 +21,23 @@ export default function Shell() {
   return (
     <AlertContext.Provider value={{ showAlert }}>
       <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)' }}>
+        {/* Sidebar — desktop only */}
         <NavRail />
 
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           <BubbleBar onManualAlert={() => showAlert('general')} />
-          <main className="flex-1 overflow-y-auto">
+
+          {/* Page content — fades on route change */}
+          <main
+            key={location.pathname}
+            className="flex-1 overflow-y-auto animate-page-in"
+            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+          >
             <Outlet />
           </main>
+
+          {/* Bottom tab bar — mobile only */}
+          <BottomTabBar />
         </div>
 
         {currentAlert && (

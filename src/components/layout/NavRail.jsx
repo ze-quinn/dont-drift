@@ -1,17 +1,37 @@
-import { NavLink } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useStore } from '../../store/useStore'
 
 const NAV = [
-  { to: '/',         icon: <GridIcon />,  label: 'Today'    },
-  { to: '/log',      icon: <PlusIcon />,  label: 'Log'      },
-  { to: '/habits',   icon: <CheckIcon />, label: 'Habits'   },
-  { to: '/stats',    icon: <ChartIcon />, label: 'Stats'    },
-  { to: '/settings', icon: <GearIcon />,  label: 'Settings' },
+  { to: '/',         icon: GridIcon,  label: 'Today'    },
+  { to: '/log',      icon: PlusIcon,  label: 'Log'      },
+  { to: '/habits',   icon: CheckIcon, label: 'Habits'   },
+  { to: '/stats',    icon: ChartIcon, label: 'Stats'    },
+  { to: '/settings', icon: GearIcon,  label: 'Settings' },
 ]
 
+// ── Sidebar nav (desktop) ──────────────────────────────────────
 export default function NavRail() {
   const { settings, updateSettings } = useStore()
   const theme = settings.theme ?? 'dark'
+  const location = useLocation()
+
+  // Sliding indicator
+  const itemRefs  = useRef([])
+  const [indicatorStyle, setIndicatorStyle] = useState({ top: 0, opacity: 0 })
+
+  useEffect(() => {
+    const idx = NAV.findIndex(n =>
+      n.to === '/' ? location.pathname === '/' : location.pathname.startsWith(n.to)
+    )
+    const el = itemRefs.current[idx]
+    if (el) {
+      setIndicatorStyle({
+        top: el.offsetTop + el.offsetHeight / 2 - 14,
+        opacity: 1,
+      })
+    }
+  }, [location.pathname])
 
   function toggleTheme() {
     updateSettings({ theme: theme === 'dark' ? 'light' : 'dark' })
@@ -19,27 +39,41 @@ export default function NavRail() {
 
   return (
     <nav
-      className="flex flex-col items-center py-5 gap-0.5 w-[62px] shrink-0"
+      className="hidden lg:flex flex-col items-center py-5 gap-0.5 w-[62px] shrink-0"
       style={{
         borderRight: '1px solid var(--border-dim)',
         background: 'var(--bg-panel-alt)',
+        position: 'relative',
       }}
     >
+      {/* Sliding active indicator */}
+      <div style={{
+        position: 'absolute',
+        left: 0,
+        width: 2,
+        height: 28,
+        background: 'var(--brass)',
+        borderRadius: '0 1px 1px 0',
+        transition: 'top 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s',
+        ...indicatorStyle,
+      }} />
+
       {/* Bubble logo */}
       <div className="mb-5 mt-1">
         <BubbleLogo />
       </div>
 
       {/* Nav links */}
-      {NAV.map(({ to, icon, label }) => (
+      {NAV.map(({ to, icon: Icon, label }, i) => (
         <NavLink
           key={to}
           to={to}
           end={to === '/'}
+          ref={el => itemRefs.current[i] = el}
           className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
           title={label}
         >
-          <span className="w-4 h-4 flex items-center justify-center">{icon}</span>
+          <span className="w-4 h-4 flex items-center justify-center"><Icon /></span>
           <span style={{ fontSize: '0.52rem', letterSpacing: '0.1em', fontWeight: 600, textTransform: 'uppercase', fontFamily: 'DM Sans, sans-serif' }}>
             {label}
           </span>
@@ -63,28 +97,64 @@ export default function NavRail() {
   )
 }
 
-/* ── Logo ─────────────────────────────────────────────────── */
+// ── Bottom tab bar (mobile) ────────────────────────────────────
+export function BottomTabBar() {
+  const { settings, updateSettings } = useStore()
+  const theme = settings.theme ?? 'dark'
+
+  return (
+    <nav
+      className="lg:hidden flex items-stretch"
+      style={{
+        borderTop: '1px solid var(--border-dim)',
+        background: 'var(--bg-panel-alt)',
+        flexShrink: 0,
+      }}
+    >
+      {NAV.map(({ to, icon: Icon, label }) => (
+        <NavLink
+          key={to}
+          to={to}
+          end={to === '/'}
+          className={({ isActive }) => `tab-item ${isActive ? 'active' : ''}`}
+        >
+          <span className="w-4 h-4 flex items-center justify-center"><Icon /></span>
+          <span style={{ fontSize: '0.48rem', letterSpacing: '0.08em', fontWeight: 600, textTransform: 'uppercase', fontFamily: 'DM Sans, sans-serif' }}>
+            {label}
+          </span>
+        </NavLink>
+      ))}
+      {/* Theme toggle as last tab */}
+      <button
+        onClick={() => updateSettings({ theme: theme === 'dark' ? 'light' : 'dark' })}
+        className="tab-item"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', flex: 0, padding: '10px 12px 8px' }}
+      >
+        {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+      </button>
+    </nav>
+  )
+}
+
+/* ── Bubble Logo ──────────────────────────────────────────────── */
 function BubbleLogo() {
   return (
     <svg viewBox="0 0 36 36" width="34" height="34" fill="none">
-      {/* Outer hex frame */}
-      <polygon
-        points="18,2 32,10 32,26 18,34 4,26 4,10"
-        stroke="var(--brass)" strokeWidth="1.5" fill="none" opacity="0.7"
-      />
-      {/* Three bubbles — different sizes, Bauhaus cluster */}
-      <circle cx="18" cy="15" r="5.5" stroke="var(--brass)" strokeWidth="1.5" fill="none"/>
-      <circle cx="12" cy="22" r="3.5" stroke="var(--brass)" strokeWidth="1.5" fill="none"/>
-      <circle cx="24" cy="23" r="2.5" stroke="var(--brass)" strokeWidth="1.5" fill="none"/>
-      {/* Specular dots — Bauhaus detail */}
-      <circle cx="16.5" cy="13.5" r="1" fill="var(--brass)" opacity="0.6"/>
-      <circle cx="11"   cy="21"   r="0.7" fill="var(--brass)" opacity="0.6"/>
-      <circle cx="23"   cy="22"   r="0.5" fill="var(--brass)" opacity="0.6"/>
+      {/* Large bubble */}
+      <circle cx="16" cy="21" r="9"   stroke="var(--brass)" strokeWidth="1.5" fill="none"/>
+      {/* Medium bubble */}
+      <circle cx="25" cy="14" r="6"   stroke="var(--brass)" strokeWidth="1.4" fill="none"/>
+      {/* Small bubble */}
+      <circle cx="10" cy="12" r="4"   stroke="var(--brass)" strokeWidth="1.2" fill="none"/>
+      {/* Specular dots */}
+      <circle cx="13.5" cy="18"  r="1.3" fill="var(--brass)" opacity="0.6"/>
+      <circle cx="23"   cy="12"  r="0.9" fill="var(--brass)" opacity="0.55"/>
+      <circle cx="8.5"  cy="10.5" r="0.6" fill="var(--brass)" opacity="0.5"/>
     </svg>
   )
 }
 
-/* ── Icons ────────────────────────────────────────────────── */
+/* ── Icons ────────────────────────────────────────────────────── */
 function GridIcon() {
   return (
     <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4">

@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react'
 import { useStore } from '../../store/useStore'
 import { isWeekend } from '../../constants/activities'
 import { CHEAT_ALLOWANCES, BUBBLE_RULES } from '../../constants/bubbles'
@@ -18,24 +19,43 @@ function HabitRow({ habit, logged, onLog }) {
   const weekend  = isWeekend()
   const disabled = (habit.weekdayOnly && weekend) || logged
   const accent   = habit.isPenalty ? 'var(--negative)' : 'var(--brass)'
+  const [ripples, setRipples] = useState([])
+
+  function handleClick() {
+    if (disabled) return
+    const id = Date.now()
+    setRipples(r => [...r, id])
+    setTimeout(() => setRipples(r => r.filter(x => x !== id)), 600)
+    onLog(habit)
+  }
 
   return (
     <div className="flex items-center gap-3 py-3" style={{ borderBottom: '1px solid var(--border-dim)' }}>
       <button
-        onClick={() => !disabled && onLog(habit)}
+        onClick={handleClick}
         disabled={disabled}
         style={{
           width: 22, height: 22, flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
+          position: 'relative', overflow: 'hidden',
           background: logged ? (habit.isPenalty ? 'rgba(91,156,196,0.15)' : 'rgba(201,168,76,0.15)') : 'transparent',
           border: logged ? `1px solid ${accent}` : '1px solid var(--border-dim)',
           borderRadius: 1, cursor: disabled ? 'default' : 'pointer',
           opacity: (habit.weekdayOnly && weekend && !logged) ? 0.3 : 1,
-          transition: 'all 0.15s',
+          transition: 'background 0.2s, border-color 0.2s',
         }}
       >
+        {/* Ripple effects */}
+        {ripples.map(id => (
+          <span key={id} className="ripple" style={{
+            width: 40, height: 40,
+            left: '50%', top: '50%',
+            marginLeft: -20, marginTop: -20,
+            background: habit.isPenalty ? 'var(--negative)' : 'var(--brass)',
+          }} />
+        ))}
         {logged && (
-          <svg viewBox="0 0 10 10" fill="none" width="10" height="10">
+          <svg viewBox="0 0 10 10" fill="none" width="10" height="10" style={{ position: 'relative', zIndex: 1 }}>
             <polyline points="1.5,5 4,7.5 8.5,2" stroke={accent} strokeWidth="1.5" strokeLinecap="square"/>
           </svg>
         )}

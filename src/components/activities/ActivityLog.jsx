@@ -25,40 +25,66 @@ const PENALTY_OPTIONS = [
   { id: 'junk',            label: '🍟 Ate junk',                   ruleKey: 'JUNK_WEEKDAY',       weekdayOnly: true },
 ]
 
+// ── Floating bubble particles ────────────────────────────────────
+const PARTICLES = [
+  { x: -6,  size: 10, dur: 0.9, delay: 0.05 },
+  { x:  0,  size: 14, dur: 1.1, delay: 0    },
+  { x:  8,  size: 8,  dur: 0.8, delay: 0.15 },
+  { x: -12, size: 6,  dur: 1.0, delay: 0.2  },
+  { x:  14, size: 11, dur: 1.2, delay: 0.08 },
+]
+
 function BubbleFlash({ delta, onDone }) {
+  const color = delta >= 0 ? 'var(--brass)' : 'var(--negative)'
+  const glow  = delta >= 0 ? 'rgba(201,168,76,0.5)' : 'rgba(91,156,196,0.5)'
+
   return (
-    <div
-      className="animate-bubble-pop"
-      onAnimationEnd={onDone}
-      style={{
-        position: 'fixed',
-        top: '50%', left: '50%',
-        transform: 'translate(-50%, -50%)',
-        zIndex: 100,
-        pointerEvents: 'none',
-        animationFillMode: 'forwards',
-        animationDuration: '1.4s',
-      }}
-    >
-      <div style={{
-        padding: '20px 40px',
-        background: delta >= 0 ? 'var(--brass)' : 'var(--negative)',
-        color: delta >= 0 ? 'var(--bg)' : '#fff',
-        borderRadius: 1,
-        textAlign: 'center',
-        boxShadow: delta >= 0
-          ? '0 0 60px rgba(201,168,76,0.5)'
-          : '0 0 60px rgba(91,156,196,0.5)',
-        border: '1px solid rgba(255,255,255,0.2)',
-      }}>
-        <div style={{ fontFamily: 'DM Mono, monospace', fontSize: '2.5rem', fontWeight: 700, lineHeight: 1 }}>
-          {delta > 0 ? '+' : ''}{delta}
-        </div>
-        <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '1rem', marginTop: 4, opacity: 0.8 }}>
-          bubbles 🫧
+    <>
+      {/* Floating particles */}
+      {PARTICLES.map((p, i) => (
+        <div key={i} style={{
+          position: 'fixed',
+          left: `calc(50% + ${p.x}px)`,
+          top: '50%',
+          width: p.size, height: p.size,
+          borderRadius: '50%',
+          background: color,
+          opacity: 0,
+          animation: `bubbleRise ${p.dur}s ease-out ${p.delay}s forwards`,
+          pointerEvents: 'none',
+          zIndex: 99,
+          marginLeft: -p.size/2,
+          marginTop: -p.size/2,
+        }} />
+      ))}
+
+      {/* Main flash */}
+      <div
+        className="animate-bubble-pop"
+        onAnimationEnd={onDone}
+        style={{
+          position: 'fixed', top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 100, pointerEvents: 'none',
+          animationFillMode: 'forwards', animationDuration: '1.4s',
+        }}
+      >
+        <div style={{
+          padding: '20px 40px',
+          background: color, color: delta >= 0 ? 'var(--bg)' : '#fff',
+          borderRadius: 1, textAlign: 'center',
+          boxShadow: `0 0 60px ${glow}`,
+          border: '1px solid rgba(255,255,255,0.2)',
+        }}>
+          <div style={{ fontFamily: 'DM Mono, monospace', fontSize: '2.5rem', fontWeight: 700, lineHeight: 1 }}>
+            {delta > 0 ? '+' : ''}{delta}
+          </div>
+          <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '1rem', marginTop: 4, opacity: 0.8 }}>
+            bubbles 🫧
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -155,8 +181,8 @@ export default function ActivityLog() {
         </div>
       )}
 
-      {/* Options grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 20 }}>
+      {/* Options grid — 1 col on very small, 2 col on 380px+ */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: 8, marginBottom: 20 }}>
         {currentOptions.map(opt => {
           const isDisabled = opt.weekdayOnly && weekend
           const preview    = opt.ruleKey ? BUBBLE_RULES[opt.ruleKey]?.delta : null
