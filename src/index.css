@@ -26,6 +26,7 @@
   --negative-dim: #3a6e96;
 
   --grid-line: rgba(201,168,76,0.04);
+  --bg-panel-raised: #12263a;   /* primary panels — one step lighter */
 
   --watermark-opacity: 0.28;   /* halftone rank illustration behind the gauge (night) */
 }
@@ -33,6 +34,7 @@
 [data-theme="light"] {
   --bg:           #f0e8d4;
   --bg-panel:     #e8dfc8;
+  --bg-panel-raised: #eee6d2;
   --bg-panel-alt: #ddd4bc;
   --bg-input:     rgba(0,0,0,0.05);
 
@@ -153,6 +155,19 @@ html[data-theme="light"][data-time="night"] {
       box-shadow: 0 4px 20px rgba(0,0,0,0.2);
     }
   }
+
+  .panel-raised {
+    background-color: var(--bg-panel-raised);
+  }
+
+  /* Art-deco brass hairline — the header motif, reusable as a divider */
+  .deco-rule {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .deco-rule::before { content: ''; height: 1px; width: 56px;  background: var(--brass); }
+  .deco-rule::after  { content: ''; height: 1px; flex: 0 0 12px; background: var(--brass); opacity: 0.35; }
 
   .panel-dark {
     background-color: var(--bg-panel-alt);
@@ -373,6 +388,16 @@ html[data-theme="light"][data-time="night"] {
 .water-bg .layer-a { animation: waterDriftA 26s ease-in-out infinite; transform-origin: center; }
 .water-bg .layer-b { animation: waterDriftB 34s ease-in-out infinite; transform-origin: center; }
 
+/* ─── Focus rings — brass, keyboard-only ──────────────────────── */
+:focus-visible {
+  outline: 1px solid var(--brass);
+  outline-offset: 2px;
+  border-radius: 1px;
+}
+
+/* ─── Day/night crossfade — slow ambient shift at 7am/7pm ─────── */
+body { transition: background-color 2.5s ease; }
+
 /* ─── Sync status dot ─────────────────────────────────────────── */
 @keyframes syncBlink { 50% { opacity: 0.25; } }
 
@@ -394,9 +419,47 @@ html[data-theme="light"][data-time="night"] {
   animation: skeletonShimmer 1.4s ease-in-out infinite;
 }
 
+/* ─── Streak shimmer — one brass sweep across filled days on mount ── */
+@keyframes streakShimmer {
+  0%   { filter: brightness(1); }
+  50%  { filter: brightness(1.45); }
+  100% { filter: brightness(1); }
+}
+.streak-shimmer { animation: streakShimmer 0.7s ease-out both; }
+
+/* ─── Tide line draw-in ────────────────────────────────────────── */
+@keyframes tideDraw { to { stroke-dashoffset: 0; } }
+.tide-draw {
+  stroke-dasharray: 600;
+  stroke-dashoffset: 600;
+  animation: tideDraw 0.9s cubic-bezier(0.4, 0, 0.2, 1) 0.15s forwards;
+}
+
+/* ─── Rank sheet rows — stagger in ─────────────────────────────── */
+@keyframes rowIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.rank-row { animation: rowIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ─── Halftone materialize — dots pop in one by one (level-up) ── */
+@keyframes dotIn {
+  from { opacity: 0; transform: scale(0); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.halftone-materialize circle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dotIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .water-bg .layer-a, .water-bg .layer-b { animation: none; }
   .watermark-drift { animation: none; }
+  .streak-shimmer, .rank-row { animation: none; }
+  .tide-draw { animation: none; stroke-dashoffset: 0; }
+  .halftone-materialize circle { animation: none; }
+  body { transition: none; }
   .skeleton { animation: none; opacity: 0.7; }
   .animate-slide-in, .animate-slide-up, .animate-fade-in,
   .animate-bubble-pop, .animate-page-in { animation-duration: 0.01ms; }

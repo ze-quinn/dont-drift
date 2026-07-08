@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../../store/useStore'
 import { useSyncStatus } from '../../store/useSyncStatus'
+import BubbleGlyph from '../BubbleGlyph'
 import { LEVELS } from '../../constants/levels'
 import SeaAnimalIllustration from '../SeaAnimalIllustration'
 import { usePushNotifications } from '../../hooks/usePushNotifications'
@@ -282,7 +283,7 @@ export default function Settings() {
     <div style={{ padding: 24, maxWidth: 600, margin: '0 auto' }} className="animate-fade-in">
       <div style={{ marginBottom: 32 }}>
         <div className="label-xs" style={{ marginBottom: 6 }}>Configuration</div>
-        <h1 className="font-serif font-light" style={{ fontSize: '3rem', color: 'var(--text-1)', margin: 0, lineHeight: 1 }}>
+        <h1 className="font-serif font-light" style={{ fontSize: 'clamp(2.2rem, 7vw, 3rem)', color: 'var(--text-1)', margin: 0, lineHeight: 1 }}>
           Settings
         </h1>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 12 }}>
@@ -370,7 +371,7 @@ export default function Settings() {
               </div>
 
               <span style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.7rem', color: 'var(--text-3)' }}>
-                {l.min.toLocaleString()} 🫧
+                {l.min.toLocaleString()} <BubbleGlyph size={10} />
               </span>
 
               {isCurrent && (

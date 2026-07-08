@@ -64,7 +64,7 @@ export default function Dashboard() {
         </div>
         <h1
           className="font-serif font-light leading-none"
-          style={{ fontSize: '3.5rem', color: 'var(--text-1)', letterSpacing: '-0.01em' }}
+          style={{ fontSize: 'clamp(2.5rem, 9vw, 3.5rem)', color: 'var(--text-1)', letterSpacing: '-0.01em' }}
         >
           Don't Drift
         </h1>
@@ -89,7 +89,7 @@ export default function Dashboard() {
         <div className="lg:col-span-1 space-y-5">
 
           {/* Gauge panel */}
-          <div className="panel p-5 flex flex-col items-center relative overflow-hidden">
+          <div className="panel panel-raised p-5 flex flex-col items-center relative overflow-hidden">
             <div
               className="absolute inset-0 flex items-center justify-center"
               style={{ zIndex: 0, cursor: 'pointer' }}
@@ -134,7 +134,7 @@ export default function Dashboard() {
         <div className="lg:col-span-2 space-y-5">
 
           {/* Today's tasks */}
-          <div className="panel p-5">
+          <div className="panel panel-raised p-5">
             <TaskList />
           </div>
 
@@ -195,6 +195,11 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Closing deco rule */}
+      <div className="deco-rule" style={{ marginTop: 28, justifyContent: 'center' }}>
+        <span className="label-xs" style={{ color: 'var(--text-3)', whiteSpace: 'nowrap' }}>JUST KEEP SWIMMING</span>
       </div>
 
       {rankSheetOpen && (

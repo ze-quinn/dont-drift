@@ -2,6 +2,7 @@
 // Unlocked ranks show in aqua; locked ranks are dimmed silhouettes.
 import { useEffect } from 'react'
 import SeaAnimalIllustration from '../SeaAnimalIllustration'
+import BubbleGlyph from '../BubbleGlyph'
 
 // Wide-format animals render ~1.9x their base size in width — use a smaller
 // base so every rank fits the same 84px column.
@@ -37,7 +38,7 @@ export default function RankSheet({ currentLevel, bubbles, levels, onClose }) {
           width: '100%', maxWidth: 560, maxHeight: '85vh', overflowY: 'auto',
           background: 'var(--bg-panel)', borderTop: '1px solid var(--border)',
           borderLeft: '1px solid var(--border-dim)', borderRight: '1px solid var(--border-dim)',
-          borderRadius: '8px 8px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))',
+          borderRadius: '4px 4px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))',
         }}
       >
         <div className="flex items-center justify-between mb-4">
@@ -68,11 +69,12 @@ export default function RankSheet({ currentLevel, bubbles, levels, onClose }) {
             return (
               <div
                 key={lv.level}
-                className="flex items-center gap-4 py-3"
+                className="rank-row flex items-center gap-4 py-3"
                 style={{
+                  animationDelay: `${i * 40}ms`,
                   borderBottom: i < levels.length - 1 ? '1px solid var(--border-dim)' : 'none',
                   background: isCurrent ? 'rgba(126,207,192,0.06)' : 'transparent',
-                  borderRadius: 4, paddingLeft: 8, paddingRight: 8,
+                  borderRadius: 2, paddingLeft: 8, paddingRight: 8,
                 }}
               >
                 <div style={{ width: 84, height: 84, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -102,7 +104,7 @@ export default function RankSheet({ currentLevel, bubbles, levels, onClose }) {
                       <span style={{ color: 'var(--brass)', fontFamily: 'DM Mono, monospace' }}>
                         {toGo.toLocaleString()}
                       </span>{' '}
-                      🫧 to go
+                      <BubbleGlyph size={10} /> to go
                     </span>
                   )}
                 </div>

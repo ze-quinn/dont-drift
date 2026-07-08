@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import BubbleGlyph from '../BubbleGlyph'
 import { useStore } from '../../store/useStore'
 import { BUBBLE_RULES } from '../../constants/bubbles'
 import { isWeekend } from '../../constants/activities'
@@ -68,7 +69,7 @@ function BubbleFlash({ delta, onDone }) {
             {delta > 0 ? '+' : ''}{delta}
           </div>
           <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '1rem', marginTop: 4, opacity: 0.8 }}>
-            bubbles 🫧
+            bubbles <BubbleGlyph size={11} />
           </div>
         </div>
       </div>

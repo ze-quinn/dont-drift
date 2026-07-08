@@ -59,7 +59,7 @@ export default function LevelUpCelebration() {
           textAlign: 'center', position: 'relative',
           background: 'var(--bg-panel)',
           border: '1px solid var(--border)',
-          borderRadius: 4, padding: '34px 40px',
+          borderRadius: 2, padding: '34px 40px',
           boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
           maxWidth: 360,
         }}
@@ -81,7 +81,7 @@ export default function LevelUpCelebration() {
           You became
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, position: 'relative', zIndex: 1 }}>
-          <SeaAnimalIllustration animal={level.name} size={96} color="var(--aqua)" opacity={0.95} />
+          <SeaAnimalIllustration animal={level.name} size={96} color="var(--aqua)" opacity={0.95} materialize />
         </div>
         <div className="font-serif" style={{
           fontSize: '2.2rem', color: 'var(--brass)', letterSpacing: '0.03em',

@@ -4,6 +4,7 @@ import { useStore } from '../../store/useStore'
 import { soundBubbles } from '../../lib/feedback'
 import { useSyncStatus } from '../../store/useSyncStatus'
 import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
+import BubbleGlyph from '../BubbleGlyph'
 
 export default function BubbleBar({ onManualAlert }) {
   const bubbles = useStore(s => s.bubbles)
@@ -103,7 +104,14 @@ export default function BubbleBar({ onManualAlert }) {
           onMouseLeave={() => setProgressTooltip(false)}
         >
           <div className="flex justify-between items-baseline mb-1">
-            <span className="label-xs truncate">{next ? `To ${next.name.slice(0,8)}…` : 'Max rank'}</span>
+            <span className="label-xs truncate">
+              {next ? (
+                <>
+                  <span className="hidden sm:inline">{`To ${next.name}`}</span>
+                  <span className="sm:hidden">{`To L${next.level}`}</span>
+                </>
+              ) : 'Max rank'}
+            </span>
             {next && <span className="label-xs ml-2 shrink-0">{Math.max(0, next.min - bubbles).toLocaleString()}</span>}
           </div>
           <div className="h-px w-full" style={{ background: 'var(--border-dim)', position: 'relative' }}>
@@ -129,7 +137,7 @@ export default function BubbleBar({ onManualAlert }) {
               <span style={{ color: 'var(--brass)', fontWeight: 600 }}>{next.name}</span>
               <span style={{ color: 'var(--text-3)' }}> — </span>
               <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700 }}>{Math.max(0, next.min - bubbles).toLocaleString()}</span>
-              <span style={{ color: 'var(--text-3)' }}> 🫧 to go</span>
+              <span style={{ color: 'var(--text-3)' }}> <BubbleGlyph size={10} /> to go</span>
             </div>
           )}
         </div>
@@ -142,7 +150,7 @@ export default function BubbleBar({ onManualAlert }) {
           style={{ position: 'relative', cursor: 'pointer', userSelect: 'none' }}
           onClick={handleCountClick}
         >
-          <div className="label-xs mb-0.5">🫧 Bubbles</div>
+          <div className="label-xs mb-0.5"><BubbleGlyph size={10} /> Bubbles</div>
           <div className="font-mono font-bold leading-none"
             style={{ fontSize: '1.2rem', color: isNegative ? 'var(--negative)' : 'var(--brass)', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}
           >

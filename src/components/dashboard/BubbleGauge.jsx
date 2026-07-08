@@ -95,7 +95,7 @@ export default function BubbleGauge() {
               x1={inner.x} y1={inner.y}
               x2={outer.x} y2={outer.y}
               stroke="var(--border-dim)"
-              strokeWidth={isMajor ? 1.5 : 0.75}
+              strokeWidth={isMajor ? 1.75 : 0.9}
             />
           ))}
 
@@ -104,7 +104,7 @@ export default function BubbleGauge() {
             d={trackPath}
             fill="none"
             stroke="var(--border-dim)"
-            strokeWidth="5"
+            strokeWidth="6"
             strokeLinecap="square"
           />
 
@@ -114,7 +114,7 @@ export default function BubbleGauge() {
               d={fillPath}
               fill="none"
               stroke={isNegative ? 'var(--negative)' : 'url(#gaugeGrad)'}
-              strokeWidth="5"
+              strokeWidth="6"
               strokeLinecap="square"
               style={{ transition: 'all 0.8s cubic-bezier(0.4,0,0.2,1)' }}
             />

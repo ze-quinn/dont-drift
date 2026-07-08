@@ -45,7 +45,7 @@ export default function TideChart() {
     <div className="panel p-4">
       <div className="flex items-center justify-between mb-2">
         <div className="label-xs">This week's tide</div>
-        <div className="font-mono font-bold" style={{ fontSize: '0.9rem', color: net >= 0 ? 'var(--brass)' : 'var(--negative)' }}>
+        <div className="font-mono font-bold" style={{ fontSize: '0.9rem', fontVariantNumeric: 'tabular-nums', color: net >= 0 ? 'var(--brass)' : 'var(--negative)' }}>
           {net >= 0 ? '+' : ''}{net}
         </div>
       </div>
@@ -63,7 +63,7 @@ export default function TideChart() {
 
         {/* Tide */}
         <polygon points={areaPts} fill="url(#tideFill)" />
-        <polyline points={linePts} fill="none" stroke="var(--aqua)" strokeWidth="2" strokeLinejoin="round" />
+        <polyline className="tide-draw" points={linePts} fill="none" stroke="var(--aqua)" strokeWidth="2" strokeLinejoin="round" />
 
         {/* Selected-day marker line */}
         {selected != null && (

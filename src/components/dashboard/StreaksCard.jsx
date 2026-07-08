@@ -40,7 +40,8 @@ export default function StreaksCard() {
           const did      = logged.has(d.toDateString())
           return (
             <div key={i} className="flex-1 text-center">
-              <div style={{
+              <div className={did ? 'streak-shimmer' : ''} style={{
+                animationDelay: did ? `${i * 90 + 200}ms` : undefined,
                 height: 26, borderRadius: 2,
                 background: did ? (isToday ? 'var(--aqua)' : 'var(--brass)') : 'transparent',
                 border: did ? 'none' : `1px dashed ${isFuture ? 'var(--border-dim)' : 'var(--border)'}`,

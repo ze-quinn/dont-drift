@@ -437,6 +437,7 @@ export default function SeaAnimalIllustration({
   className = '',
   style = {},
   variant = 'halftone',   // 'halftone' | 'lineart'
+  materialize = false,    // dots pop in one by one (level-up celebration)
 }) {
   if (variant === 'lineart') {
     const Component = LINEART_COMPONENTS[animal]
@@ -452,14 +453,21 @@ export default function SeaAnimalIllustration({
   if (!cfg) return null
   const W = Math.round(size * cfg.wFactor)
   const H = Math.round(size * cfg.hFactor)
+  let dots = cfg.dots
+  if (materialize) {
+    // Pseudo-random per-dot delay (deterministic) over ~1.1s
+    let n = 0
+    dots = dots.replace(/<circle /g, () => `<circle style="animation-delay:${(n++ * 7919) % 1100}ms" `)
+  }
   return (
     <div className={className} style={{ opacity, display: 'inline-flex', color, ...style }}>
       <svg
         viewBox={`0 0 ${cfg.vbw} ${cfg.vbh}`}
         width={W}
         height={H}
+        className={materialize ? 'halftone-materialize' : undefined}
         style={{ display: 'block' }}
-        dangerouslySetInnerHTML={{ __html: cfg.dots }}
+        dangerouslySetInnerHTML={{ __html: dots }}
       />
     </div>
   )
