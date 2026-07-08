@@ -7,11 +7,15 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "figma:sync": "figma-code-connect publish",
+    "figma:unpublish": "figma-code-connect unpublish",
+    "figma:check": "figma-code-connect --help"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.107.0",
     "@vercel/edge-config": "^1.4.3",
+    "html-to-image": "^1.11.13",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.16.0",
@@ -20,6 +24,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@figma/code-connect": "^1.4.8",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",

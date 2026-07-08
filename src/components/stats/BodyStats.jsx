@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { useHealth } from '../../hooks/useHealth'
 import WeightChart from './WeightChart'
+import WidgetGallery from '../widgets/WidgetGallery'
+import { feedbackSave, feedbackGain } from '../../lib/feedback'
 
 function StatCard({ label, value, unit, sub }) {
   return (
@@ -63,6 +65,7 @@ export default function BodyStats() {
   function saveSettings() {
     updateSettings({ weight: localWeight })
     if (localWeight) logWeight(localWeight)
+    feedbackSave()
   }
 
   function saveHealthData() {
@@ -86,6 +89,9 @@ export default function BodyStats() {
           <div style={{ height: 1, width: 16, background: 'var(--brass)', opacity: 0.4 }} />
         </div>
       </div>
+
+      {/* Shareable widget gallery */}
+      <WidgetGallery />
 
       {/* Computed stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 12, marginBottom: 20 }}>

@@ -39,7 +39,7 @@ export default function NavRail() {
 
   return (
     <nav
-      className="flex flex-col items-center py-5 gap-0.5 w-[52px] lg:w-[62px] shrink-0"
+      className="flex flex-col items-center py-5 gap-0.5 w-[68px] lg:w-[76px] shrink-0"
       style={{
         borderRight: '1px solid var(--border-dim)',
         background: 'var(--bg-panel-alt)',
@@ -137,16 +137,50 @@ export function BottomTabBar() {
 }
 
 /* ── Bubble Logo ──────────────────────────────────────────────── */
+const LOGO_BUBBLES = [
+  { x:  -8, r: 3,   delay: 0   },
+  { x:   6, r: 4.5, delay: 120 },
+  { x: -14, r: 2.5, delay: 230 },
+  { x:  10, r: 3.5, delay: 340 },
+  { x:   0, r: 5,   delay: 160 },
+]
+
 function BubbleLogo() {
+  const [pulsing, setPulsing] = useState(false)
+  const [pulseKey, setPulseKey] = useState(0)
+
+  function handleClick() {
+    setPulseKey(k => k + 1)
+    setPulsing(true)
+    setTimeout(() => setPulsing(false), 1600)
+  }
+
   return (
-    <svg viewBox="0 0 36 36" width="34" height="34" fill="none">
-      <circle cx="16" cy="21" r="9"   stroke="var(--brass)" strokeWidth="1.5" fill="none" opacity="0.9"/>
-      <circle cx="25" cy="14" r="6"   stroke="var(--brass)" strokeWidth="1.4" fill="none" opacity="0.6"/>
-      <circle cx="10" cy="12" r="4"   stroke="var(--brass)" strokeWidth="1.2" fill="none" opacity="0.4"/>
-      <circle cx="13.5" cy="18"   r="1.3" fill="var(--brass)" opacity="0.55"/>
-      <circle cx="23"   cy="12"   r="0.9" fill="var(--brass)" opacity="0.4"/>
-      <circle cx="8.5"  cy="10.5" r="0.6" fill="var(--brass)" opacity="0.3"/>
-    </svg>
+    <div style={{ position: 'relative', cursor: 'pointer', userSelect: 'none' }} onClick={handleClick}>
+      <svg viewBox="0 0 36 36" width="34" height="34" fill="none">
+        <circle cx="16" cy="21" r="9"   stroke="var(--brass)" strokeWidth="1.5" fill="none" opacity="0.9"/>
+        <circle cx="25" cy="14" r="6"   stroke="var(--brass)" strokeWidth="1.4" fill="none" opacity="0.6"/>
+        <circle cx="10" cy="12" r="4"   stroke="var(--brass)" strokeWidth="1.2" fill="none" opacity="0.4"/>
+        <circle cx="13.5" cy="18"   r="1.3" fill="var(--brass)" opacity="0.55"/>
+        <circle cx="23"   cy="12"   r="0.9" fill="var(--brass)" opacity="0.4"/>
+        <circle cx="8.5"  cy="10.5" r="0.6" fill="var(--brass)" opacity="0.3"/>
+      </svg>
+      {/* Bubbles */}
+      {pulsing && LOGO_BUBBLES.map((b, i) => (
+        <div key={`${pulseKey}-b${i}`} style={{
+          position: 'absolute',
+          left: `calc(50% + ${b.x}px)`,
+          bottom: '60%',
+          width: b.r * 2, height: b.r * 2,
+          borderRadius: '50%',
+          border: '1px solid var(--brass)',
+          opacity: 0,
+          pointerEvents: 'none',
+          '--bx': '0px',
+          animation: `bubbleRiseSmall 1.5s ease-out ${b.delay}ms forwards`,
+        }} />
+      ))}
+    </div>
   )
 }
 
@@ -213,8 +247,8 @@ function SunIcon() {
 }
 function MoonIcon() {
   return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
-      <path d="M13.5 10A6 6 0 016 2.5a6 6 0 100 11 6 6 0 007.5-3.5z"/>
+    <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4">
+      <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"/>
     </svg>
   )
 }

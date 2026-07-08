@@ -3,6 +3,7 @@ import { useStore } from '../../store/useStore'
 import { BUBBLE_RULES } from '../../constants/bubbles'
 import { isWeekend } from '../../constants/activities'
 import { useAlertTrigger } from '../../context/AlertContext'
+import { feedbackGain, feedbackLoss, feedbackSleep, feedbackStep } from '../../lib/feedback'
 
 // ── Built-in options ──────────────────────────────────────────────────────────
 const BUILTIN_GAINS = [
@@ -13,7 +14,7 @@ const BUILTIN_GAINS = [
   { id: 'strength',      label: '🏋️ Functional strength', ruleKey: 'STRENGTH' },
   { id: 'yoga',          label: '🧘 Yoga / mobility',    ruleKey: 'YOGA' },
   { id: 'protein',       label: '🥤 Vegan protein',      ruleKey: 'PROTEIN_POWDER' },
-  { id: 'sleep7',        label: '😴 Slept 7+ hours',     ruleKey: 'SLEEP_7' },
+  { id: 'sleep7',        label: '😴 Slept on time',      ruleKey: 'SLEEP_7' },
   { id: 'book',          label: '📚 Finished a book',    ruleKey: 'FINISHED_BOOK' },
 ]
 
@@ -261,7 +262,141 @@ function AddActivitySheet({ forType, onAdd, onClose }) {
   )
 }
 
+// ── Sleep card ────────────────────────────────────────────────────────────────
+function SleepCard({ onFlash }) {
+  const logSleep      = useStore(s => s.logSleep)
+  const isLoggedToday = useStore(s => s.isLoggedToday)
+  const sleepGoal     = useStore(s => s.settings.sleepGoalHours ?? 7)
+  const sleepLogs     = useStore(s => s.sleepLogs)
+  // null = user hasn't touched the stepper yet → always mirrors the live goal from settings
+  const [hours, setHours] = useState(null)
+  const displayHours = hours ?? sleepGoal
+
+  const loggedToday = isLoggedToday('SLEEP_LOG')
+  const todaySleep  = sleepLogs.find(l => new Date(l.date).toDateString() === new Date().toDateString())
+
+  // Preview delta
+  const diff = displayHours - sleepGoal
+  const previewDelta = diff >= 0
+    ? Math.min(30, Math.round(diff * 10) + 5)
+    : Math.max(-30, Math.round(diff * 10))
+  const isPositive = previewDelta >= 0
+
+  function handleLog() {
+    if (loggedToday) return
+    logSleep(displayHours)
+    onFlash(previewDelta)
+    feedbackSleep()
+  }
+
+  return (
+    <div className="panel" style={{ padding: 16, marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: '1.1rem' }}>😴</span>
+          <span className="label-xs" style={{ color: 'var(--brass)' }}>Sleep</span>
+        </div>
+        {loggedToday && todaySleep && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg viewBox="0 0 10 10" fill="none" width="9" height="9">
+              <polyline points="1.5,5 4,7.5 8.5,2" stroke="var(--brass)" strokeWidth="1.5" strokeLinecap="square"/>
+            </svg>
+            <span style={{
+              fontFamily: 'DM Mono, monospace', fontSize: '0.7rem', fontWeight: 700,
+              color: todaySleep.delta >= 0 ? 'var(--brass)' : 'var(--negative)',
+            }}>
+              {todaySleep.delta > 0 ? '+' : ''}{todaySleep.delta} · {todaySleep.hoursSlept}h logged
+            </span>
+          </div>
+        )}
+      </div>
+
+      {loggedToday ? (
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-3)', fontFamily: 'DM Sans, sans-serif' }}>
+          Already logged for today. See you tomorrow.
+        </div>
+      ) : (
+        <>
+          {/* Row 1: stepper + preview */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            {/* Hours stepper */}
+            <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border-dim)', borderRadius: 1, overflow: 'hidden', flexShrink: 0 }}>
+              <button
+                onClick={() => { setHours(Math.max(1, parseFloat((displayHours - 0.5).toFixed(1)))); feedbackStep() }}
+                style={{ width: 36, height: 40, background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-2)', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >−</button>
+              <div style={{ width: 52, textAlign: 'center', fontFamily: 'DM Mono, monospace', fontSize: '1.1rem', fontWeight: 700, color: 'var(--brass)', padding: '0 4px' }}>
+                {displayHours}h
+              </div>
+              <button
+                onClick={() => { setHours(Math.min(16, parseFloat((displayHours + 0.5).toFixed(1)))); feedbackStep() }}
+                style={{ width: 36, height: 40, background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-2)', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >+</button>
+            </div>
+
+            {/* Goal + delta preview */}
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.5 }}>
+              Goal: {sleepGoal}h
+              <br />
+              <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700, color: isPositive ? 'var(--brass)' : 'var(--negative)' }}>
+                {previewDelta > 0 ? '+' : ''}{previewDelta} bubbles
+              </span>
+            </div>
+          </div>
+
+          {/* Row 2: full-width log button */}
+          <button onClick={handleLog} className="btn-brass" style={{ width: '100%' }}>
+            Log sleep
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
+function AnchoredGuard({ onWeigh }) {
+  return (
+    <div style={{
+      margin: '0 0 28px',
+      background: 'rgba(120,120,120,0.06)',
+      border: '1px solid rgba(160,160,160,0.18)',
+      borderRadius: 3,
+      padding: '20px 18px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      gap: 10, textAlign: 'center',
+    }}>
+      <div style={{ fontSize: 28, opacity: 0.4 }}>⚓</div>
+      <div style={{
+        fontFamily: 'DM Mono, monospace', fontSize: '0.72rem',
+        color: 'rgba(160,160,160,0.7)', letterSpacing: '0.07em',
+      }}>
+        You're anchored
+      </div>
+      <div style={{
+        fontSize: '0.8rem', color: 'rgba(150,150,150,0.55)',
+        fontFamily: 'DM Sans, sans-serif', lineHeight: 1.6, maxWidth: 280,
+      }}>
+        You can still log, but nothing counts toward your streak while you're anchored. Want to resurface first?
+      </div>
+      <button
+        onClick={onWeigh}
+        style={{
+          marginTop: 4,
+          background: 'rgba(126,207,192,0.08)',
+          border: '1px solid rgba(126,207,192,0.28)',
+          borderRadius: 2, padding: '8px 20px',
+          fontFamily: 'DM Mono, monospace', fontSize: '0.7rem',
+          color: 'var(--aqua)', letterSpacing: '0.06em',
+          cursor: 'pointer',
+        }}
+      >
+        Weigh anchor →
+      </button>
+    </div>
+  )
+}
+
 export default function ActivityLog() {
   const addBubbles           = useStore(s => s.addBubbles)
   const isLoggedToday        = useStore(s => s.isLoggedToday)
@@ -271,6 +406,8 @@ export default function ActivityLog() {
   const addCustomActivity    = useStore(s => s.addCustomActivity)
   const removeActivity       = useStore(s => s.removeActivity)
   const removeCustomActivity = useStore(s => s.removeCustomActivity)
+  const anchorState          = useStore(s => s.anchorState)
+  const weighAnchor          = useStore(s => s.weighAnchor)
   const { showAlert } = useAlertTrigger()
 
   const todayStr  = new Date().toDateString()
@@ -354,6 +491,8 @@ export default function ActivityLog() {
     setSelected(null)
     setNote('')
     setDuration(30)
+    if (totalDelta >= 0) feedbackGain()
+    else feedbackLoss()
     setTimeout(() => showAlert('general'), 2200)
   }
 
@@ -389,6 +528,12 @@ export default function ActivityLog() {
           <div style={{ height: 1, width: 16, background: 'var(--brass)', opacity: 0.4 }} />
         </div>
       </div>
+
+      {/* Sleep card */}
+      <SleepCard onFlash={delta => { setFlash(delta); setTimeout(() => showAlert('general'), 2200) }} />
+
+      {/* Anchored guard */}
+      {anchorState && <AnchoredGuard onWeigh={weighAnchor} />}
 
       {/* Tab toggle */}
       <div style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 1, marginBottom: 24, overflow: 'hidden' }}>

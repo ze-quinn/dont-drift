@@ -1,35 +1,18 @@
 // POST /api/save-prefs
-// Saves notification schedules (array of { id, hour, minute, topic }) to Vercel Edge Config.
+// Saves notification schedules to Supabase, keyed by user_id from the JWT.
 
-async function edgeConfigUpsert(items) {
-  const edgeConfigId = process.env.EDGE_CONFIG_ID
-  const vercelToken  = process.env.VERCEL_API_TOKEN
-  const r = await fetch(
-    `https://api.vercel.com/v1/edge-config/${edgeConfigId}/items`,
-    {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${vercelToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ items }),
-    }
-  )
-  if (!r.ok) throw new Error(`Vercel API ${r.status}: ${await r.text()}`)
-}
+import { createClient } from '@supabase/supabase-js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   const { schedules } = req.body ?? {}
-
   if (!Array.isArray(schedules) || schedules.length === 0) {
     return res.status(400).json({ error: 'schedules array required' })
   }
   if (schedules.length > 10) {
     return res.status(400).json({ error: 'Maximum 10 notification schedules' })
   }
-
   for (const s of schedules) {
     if (s.hour == null || s.minute == null || !s.topic) {
       return res.status(400).json({ error: 'Each schedule needs hour, minute, topic' })
@@ -39,13 +22,26 @@ export default async function handler(req, res) {
     }
   }
 
-  try {
-    await edgeConfigUpsert([
-      { operation: 'upsert', key: 'notif_prefs', value: JSON.stringify(schedules) },
-    ])
-    return res.status(200).json({ ok: true })
-  } catch (err) {
-    console.error('save-prefs error:', err)
-    return res.status(500).json({ error: err.message })
+  const jwt = (req.headers.authorization ?? '').replace('Bearer ', '')
+  if (!jwt) return res.status(401).json({ error: 'Missing auth token' })
+
+  const supabase = createClient(
+    process.env.VITE_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
+
+  const { data: { user }, error: authErr } = await supabase.auth.getUser(jwt)
+  if (authErr || !user) return res.status(401).json({ error: 'Invalid token' })
+
+  const { error } = await supabase
+    .from('push_subscriptions')
+    .update({ prefs: schedules, updated_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+
+  if (error) {
+    console.error('save-prefs error:', error)
+    return res.status(500).json({ error: error.message })
   }
+
+  return res.status(200).json({ ok: true })
 }

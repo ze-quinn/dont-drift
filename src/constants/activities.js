@@ -54,7 +54,7 @@ export const ACTIVITIES = {
 export const HABITS = {
   sleep7: {
     id: 'sleep7',
-    label: 'Slept 7+ hours',
+    label: 'Slept on time',
     icon: '😴',
     positive: true,
   },

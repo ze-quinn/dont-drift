@@ -3,6 +3,7 @@ import { useStore } from '../../store/useStore'
 import { LEVELS } from '../../constants/levels'
 import SeaAnimalIllustration from '../SeaAnimalIllustration'
 import { usePushNotifications } from '../../hooks/usePushNotifications'
+import MandatoryActivities from './MandatoryActivities'
 import { supabase } from '../../lib/supabase'
 
 function Field({ label, value, onChange, type = 'number', min, max, hint }) {
@@ -28,7 +29,7 @@ function Field({ label, value, onChange, type = 'number', min, max, hint }) {
   )
 }
 
-const NOTIF_TOPICS = [
+const BUILTIN_NOTIF_TOPICS = [
   { id: 'shoulder',   label: 'Shoulder work',     icon: '💪' },
   { id: 'run',        label: 'Run reminder',       icon: '🏃' },
   { id: 'swim',       label: 'Swim reminder',      icon: '🏊' },
@@ -62,6 +63,18 @@ function TimeInput({ label, value, onChange, min, max }) {
 function NotifSchedules({ savePrefs, prefsSaved, pushError, unsubscribe }) {
   const notifSchedules    = useStore(s => s.notifSchedules)
   const setNotifSchedules = useStore(s => s.setNotifSchedules)
+  const customActivities  = useStore(s => s.customActivities)
+
+  // Merge built-in topics with user's custom activities
+  const NOTIF_TOPICS = [
+    ...BUILTIN_NOTIF_TOPICS,
+    ...customActivities.map(a => ({
+      id:     a.id,
+      label:  a.label,
+      icon:   a.icon ?? '⭐',
+      custom: true,
+    })),
+  ]
 
   // Local copy for editing before saving
   const [schedules, setSchedules] = useState(() =>
@@ -87,8 +100,15 @@ function NotifSchedules({ savePrefs, prefsSaved, pushError, unsubscribe }) {
   }
 
   function handleSave() {
-    setNotifSchedules(schedules)
-    savePrefs(schedules)
+    // Attach label + icon for custom topics so the server can generate messages
+    const enriched = schedules.map(s => {
+      const topic = NOTIF_TOPICS.find(t => t.id === s.topic)
+      return topic?.custom
+        ? { ...s, label: topic.label, icon: topic.icon }
+        : s
+    })
+    setNotifSchedules(enriched)
+    savePrefs(enriched)
   }
 
   return (
@@ -165,7 +185,7 @@ function NotifSchedules({ savePrefs, prefsSaved, pushError, unsubscribe }) {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <button onClick={handleSave} className="btn-brass" style={{ flex: 1 }}>
-          {prefsSaved ? '✓ Saved' : 'Save notification preferences'}
+          {prefsSaved ? '✓ Saved' : 'Save'}
         </button>
         <button onClick={unsubscribe} className="btn-ghost"
           style={{ fontSize: '0.65rem', padding: '8px 14px', flexShrink: 0 }}>
@@ -186,8 +206,9 @@ export default function Settings() {
   const { settings, updateSettings } = useStore()
   const bubbles = useStore(s => s.bubbles)
   const { status: pushStatus, error: pushError, prefsSaved, subscribe, unsubscribe, savePrefs } = usePushNotifications()
-  const [saved, setSaved]     = useState(false)
   const [userEmail, setUserEmail] = useState('')
+  const [sleepEditing, setSleepEditing]   = useState(false)
+  const [sleepSaved,   setSleepSaved]     = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -195,9 +216,10 @@ export default function Settings() {
     })
   }, [])
 
-  function save() {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  function saveSleep() {
+    setSleepEditing(false)
+    setSleepSaved(true)
+    setTimeout(() => setSleepSaved(false), 2000)
   }
 
   return (
@@ -213,35 +235,35 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Alarm */}
-      <div className="panel" style={{ padding: 20, marginBottom: 12 }}>
-        <div className="label-xs" style={{ color: 'var(--brass)', marginBottom: 16 }}>Wake alarm</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <Field label="Hour"   value={settings.alarmHour}   onChange={v => updateSettings({ alarmHour: Number(v) })}   min={4} max={12}/>
-          <Field label="Minute" value={settings.alarmMinute} onChange={v => updateSettings({ alarmMinute: Number(v) })} min={0} max={59}/>
-        </div>
-        <div className="label-xs" style={{ marginTop: 10 }}>
-          Set: {String(settings.alarmHour ?? 7).padStart(2,'0')}:{String(settings.alarmMinute ?? 0).padStart(2,'0')}
-        </div>
-      </div>
-
-      {/* Shoulder target */}
-      <div className="panel" style={{ padding: 20, marginBottom: 12 }}>
-        <div className="label-xs" style={{ color: 'var(--brass)', marginBottom: 16 }}>Shoulder work target</div>
-        <Field
-          label="Target hour (24hr)"
-          value={settings.shoulderTargetHour}
-          onChange={v => updateSettings({ shoulderTargetHour: Number(v) })}
-          min={6} max={22}
-          hint="You'll be reminded around this time daily"
-        />
-      </div>
-
       {/* Sleep */}
       <div className="panel" style={{ padding: 20, marginBottom: 12 }}>
-        <div className="label-xs" style={{ color: 'var(--brass)', marginBottom: 16 }}>Sleep goal</div>
-        <Field label="Target hours" value={settings.sleepGoalHours} onChange={v => updateSettings({ sleepGoalHours: Number(v) })} min={6} max={10}/>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div className="label-xs" style={{ color: 'var(--brass)' }}>Sleep goal</div>
+          {!sleepEditing && (
+            <button onClick={() => setSleepEditing(true)} className="btn-ghost"
+              style={{ fontSize: '0.62rem', padding: '4px 10px' }}>
+              {sleepSaved ? '✓ Saved' : 'Edit'}
+            </button>
+          )}
+        </div>
+        {sleepEditing ? (
+          <>
+            <Field label="Target hours" value={settings.sleepGoalHours ?? 7} onChange={v => updateSettings({ sleepGoalHours: Number(v) })} min={6} max={10}/>
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button onClick={saveSleep} className="btn-brass" style={{ flex: 1 }}>Save</button>
+              <button onClick={() => setSleepEditing(false)} className="btn-ghost"
+                style={{ fontSize: '0.65rem', padding: '8px 14px' }}>Cancel</button>
+            </div>
+          </>
+        ) : (
+          <div className="font-mono" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--brass)', letterSpacing: '-0.02em' }}>
+            {settings.sleepGoalHours ?? 7}<span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-3)', marginLeft: 4 }}>hrs</span>
+          </div>
+        )}
       </div>
+
+      {/* Mandatory activities */}
+      <MandatoryActivities />
 
       {/* Level table with animal previews */}
       <div className="panel" style={{ padding: 20, marginBottom: 12 }}>
@@ -371,9 +393,6 @@ export default function Settings() {
         </div>
       </div>
 
-      <button onClick={save} className="btn-brass" style={{ width: '100%' }}>
-        {saved ? '✓ Saved' : 'Save settings'}
-      </button>
     </div>
   )
 }

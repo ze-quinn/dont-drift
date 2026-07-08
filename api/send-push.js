@@ -1,10 +1,12 @@
-// GET /api/send-push
-// Vercel cron fires every 30 min. Reads saved preferences from Edge Config,
-// checks whether it's the user's chosen notification time (±14 min window),
-// and sends the appropriate sea animal push notification.
+// GET /api/send-push  — called by cron every 30 min
+// POST /api/send-push — manual trigger (sends all schedules regardless of time)
+//
+// Reads all push subscriptions + prefs from Supabase,
+// checks each user's schedules against the current IST time,
+// and sends the appropriate notification.
 
 import webpush from 'web-push'
-import { createClient } from '@vercel/edge-config'
+import { createClient } from '@supabase/supabase-js'
 
 // ── Message library by topic ─────────────────────────────────────────────
 const MESSAGES = {
@@ -58,30 +60,34 @@ const MESSAGES = {
   ],
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────
+// ── Generic messages for custom activities ────────────────────────────────────
+function customMessages(label, icon) {
+  const e = icon ?? '🫧'
+  return [
+    { title: "Don't Drift", body: `Time for ${label}. Keep the streak alive. ${e}` },
+    { title: "Don't Drift", body: `${e} ${label} — the ocean doesn't skip days.` },
+    { title: "Don't Drift", body: `Your ${label} reminder. Small consistent effort compounds. ${e}` },
+    { title: "Don't Drift", body: `Seahorses grip through storms. You can do ${label}. ${e}` },
+    { title: "Don't Drift", body: `${label}. Lobsters keep growing their whole lives. So do you. ${e}` },
+  ]
+}
 
-function pickMessage(topic) {
-  const pool = MESSAGES[topic] ?? MESSAGES.motivation
-  return pool[new Date().getDate() % pool.length] // rotate daily, deterministic
+function pickMessage(topic, sched) {
+  const pool = MESSAGES[topic]
+  if (pool) return pool[new Date().getDate() % pool.length]
+  const customs = customMessages(sched?.label ?? topic, sched?.icon)
+  return customs[new Date().getDate() % customs.length]
 }
 
 // Is the current UTC time within ±14 min of the user's preferred IST time?
 function isWithinWindow(prefHour, prefMinute) {
   const now = new Date()
-  // IST = UTC + 5h30m
   const istMs = now.getTime() + (5 * 60 + 30) * 60 * 1000
   const ist = new Date(istMs)
   const nowMins  = ist.getUTCHours() * 60 + ist.getUTCMinutes()
   const prefMins = prefHour * 60 + prefMinute
   const diff = Math.abs(nowMins - prefMins)
-  // Handle midnight wrap
   return diff <= 14 || (1440 - diff) <= 14
-}
-
-async function edgeGet(key) {
-  const client = createClient(process.env.EDGE_CONFIG)
-  const val = await client.get(key)
-  return val ?? null
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────
@@ -100,60 +106,71 @@ export default async function handler(req, res) {
 
   webpush.setVapidDetails(vapidEmail, vapidPublic, vapidPrivate)
 
-  // Load subscription + prefs from Edge Config
-  let rawSub, rawPrefs
-  try {
-    ;[rawSub, rawPrefs] = await Promise.all([
-      edgeGet('push_subscription'),
-      edgeGet('notif_prefs'),
-    ])
-  } catch (err) {
-    console.error('Edge Config read error:', err)
-    return res.status(500).json({ error: 'Could not read from Edge Config' })
+  // Load all subscriptions from Supabase using service role key
+  const supabase = createClient(
+    process.env.VITE_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
+
+  const { data: rows, error: dbErr } = await supabase
+    .from('push_subscriptions')
+    .select('user_id, subscription, prefs')
+
+  if (dbErr) {
+    console.error('Supabase read error:', dbErr)
+    return res.status(500).json({ error: 'Could not read subscriptions' })
   }
 
-  if (!rawSub) {
-    return res.status(404).json({ error: 'No subscription stored. Enable notifications in the app first.' })
+  if (!rows || rows.length === 0) {
+    return res.status(200).json({ ok: true, skipped: true, reason: 'No subscribers' })
   }
 
-  // Parse prefs — support both legacy single object and new array format
-  let schedules
-  if (rawPrefs) {
-    const parsed = typeof rawPrefs === 'string' ? JSON.parse(rawPrefs) : rawPrefs
-    schedules = Array.isArray(parsed) ? parsed : [parsed]
-  } else {
-    schedules = [{ hour: 19, minute: 0, topic: 'shoulder' }]
-  }
+  const isCron = req.method === 'GET'
+  const expiredUserIds = []
+  const allResults = []
 
-  const subscription = typeof rawSub === 'string' ? JSON.parse(rawSub) : rawSub
+  for (const row of rows) {
+    if (!row.subscription) continue
 
-  // For GET (cron): send only the schedules that match the current time window
-  // For POST (manual trigger): send all
-  const toSend = req.method === 'GET'
-    ? schedules.filter(s => isWithinWindow(s.hour, s.minute))
-    : schedules
+    const schedules = Array.isArray(row.prefs) ? row.prefs
+      : row.prefs ? [row.prefs]
+      : [{ id: 'default', hour: 19, minute: 0, topic: 'motivation' }]
 
-  if (req.method === 'GET' && toSend.length === 0) {
-    return res.status(200).json({ ok: true, skipped: true, reason: 'Outside all notification windows' })
-  }
+    const toSend = isCron
+      ? schedules.filter(s => isWithinWindow(s.hour, s.minute))
+      : schedules
 
-  const results = []
-  for (const sched of toSend) {
-    const msg = pickMessage(sched.topic)
-    try {
-      await webpush.sendNotification(subscription, JSON.stringify({
-        title: msg.title,
-        body:  msg.body,
-        tag:   `dont-drift-${sched.id ?? sched.topic}`,
-        url:   '/',
-      }))
-      results.push({ ok: true, topic: sched.topic, sent: msg.body })
-    } catch (err) {
-      console.error('Push send error:', err)
-      results.push({ ok: false, topic: sched.topic, error: err.message })
+    if (toSend.length === 0) continue
+
+    for (const sched of toSend) {
+      const msg = pickMessage(sched.topic, sched)
+      try {
+        await webpush.sendNotification(row.subscription, JSON.stringify({
+          title: msg.title,
+          body:  msg.body,
+          tag:   `dont-drift-${sched.id ?? sched.topic}`,
+          url:   '/',
+        }))
+        allResults.push({ ok: true, user: row.user_id, topic: sched.topic })
+      } catch (err) {
+        console.error('Push send error:', err)
+        allResults.push({ ok: false, user: row.user_id, topic: sched.topic, error: err.message, statusCode: err.statusCode, body: err.body, endpoint: row.subscription?.endpoint?.slice(0, 60) })
+        // 410 Gone or 404 = subscription expired, clean it up
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          expiredUserIds.push(row.user_id)
+        }
+      }
     }
   }
 
-  const allFailed = results.every(r => !r.ok)
-  return res.status(allFailed ? 500 : 200).json({ ok: !allFailed, results })
+  // Remove expired subscriptions
+  if (expiredUserIds.length > 0) {
+    await supabase
+      .from('push_subscriptions')
+      .delete()
+      .in('user_id', expiredUserIds)
+  }
+
+  const anyOk = allResults.some(r => r.ok)
+  return res.status(200).json({ ok: anyOk || allResults.length === 0, results: allResults })
 }

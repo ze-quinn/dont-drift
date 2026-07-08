@@ -3,6 +3,7 @@
 // and saving user preferences (time + topic) to the server.
 
 import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY
 
@@ -38,20 +39,36 @@ export function usePushNotifications() {
     setStatus('requesting')
     try {
       if (!VAPID_PUBLIC_KEY) throw new Error('VAPID public key not configured')
-      const reg = await navigator.serviceWorker.register('/sw.js')
-      await navigator.serviceWorker.ready
 
+      // Ask permission first — don't block on SW ready before showing the dialog
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') { setStatus('denied'); return }
+
+      // Register (or re-use) the service worker
+      await navigator.serviceWorker.register('/sw.js')
+
+      // Wait for the SW to be fully active before touching pushManager
+      const reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('SW timeout')), 15000)),
+      ])
+
+      // Clear any existing subscription so a fresh one is created with the current key
+      const existingSub = await reg.pushManager.getSubscription().catch(() => null)
+      if (existingSub) await existingSub.unsubscribe()
 
       const subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       })
 
+      const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch('/api/subscribe', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token ?? ''}`,
+        },
         body: JSON.stringify(subscription),
       })
       if (!res.ok) throw new Error(`Server error: ${res.status}`)
@@ -79,9 +96,13 @@ export function usePushNotifications() {
   // schedules: [{ id, hour, minute, topic }, ...]
   async function savePrefs(schedules) {
     try {
+      const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch('/api/save-prefs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token ?? ''}`,
+        },
         body: JSON.stringify({ schedules }),
       })
       if (!res.ok) throw new Error(`Server error: ${res.status}`)

@@ -122,10 +122,16 @@ function DayDetail({ date, logs, onClose }) {
   )
 }
 
+function isDateAnchored(date, anchorState) {
+  if (!anchorState) return false
+  return new Date(date) >= new Date(anchorState.since)
+}
+
 export default function WeekView() {
-  const logs = useStore(s => s.logs)
-  const weekDates = getWeekDates()
-  const todayStr  = new Date().toDateString()
+  const logs        = useStore(s => s.logs)
+  const anchorState = useStore(s => s.anchorState)
+  const weekDates   = getWeekDates()
+  const todayStr    = new Date().toDateString()
   const [selectedDate, setSelectedDate] = useState(null)
 
   function getDayLogs(date) {
@@ -145,55 +151,65 @@ export default function WeekView() {
             const total      = dayLogs.reduce((s, l) => s + l.delta, 0)
             const hasActivity = dayLogs.some(l => l.delta > 0)
             const isFuture   = date > new Date() && !isToday
+            const anchored   = isDateAnchored(date, anchorState)
 
             return (
               <button
                 key={i}
-                onClick={() => !isFuture && setSelectedDate(date)}
+                onClick={() => !isFuture && !anchored && setSelectedDate(date)}
                 style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
                   background: 'none', border: 'none',
-                  cursor: isFuture ? 'default' : 'pointer',
+                  cursor: isFuture || anchored ? 'default' : 'pointer',
                   padding: '2px 0', borderRadius: 1,
-                  opacity: isFuture ? 0.35 : 1,
+                  opacity: isFuture ? 0.35 : anchored ? 0.5 : 1,
                   WebkitTapHighlightColor: 'transparent',
                 }}
               >
-                <span className="label-xs">{DAYS_SHORT[date.getDay()]}</span>
+                <span className="label-xs" style={anchored ? { color: 'rgba(140,140,140,0.5)' } : {}}>
+                  {DAYS_SHORT[date.getDay()]}
+                </span>
 
                 <div style={{
                   width: 28, height: 28,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '0.65rem',
+                  fontSize: anchored ? '0.8rem' : '0.65rem',
                   fontFamily: 'DM Mono, monospace',
                   fontWeight: isToday ? 700 : 400,
-                  background: isToday
+                  background: anchored
+                    ? 'rgba(120,120,120,0.08)'
+                    : isToday
                     ? 'rgba(201,168,76,0.18)'
                     : hasActivity
                     ? 'rgba(201,168,76,0.07)'
                     : 'transparent',
-                  border: isToday
+                  border: anchored
+                    ? '1px dashed rgba(140,140,140,0.22)'
+                    : isToday
                     ? '1px solid var(--border-strong)'
                     : '1px solid var(--border-dim)',
-                  color: total < 0 ? 'var(--negative)' : 'var(--text-2)',
+                  color: anchored ? 'rgba(140,140,140,0.45)' : total < 0 ? 'var(--negative)' : 'var(--text-2)',
                   borderRadius: 1,
                   transition: 'background 0.1s, border-color 0.1s',
                 }}>
-                  {date.getDate()}
+                  {anchored ? '⚓' : date.getDate()}
                 </div>
 
-                {/* Activity dots */}
-                <div style={{ display: 'flex', gap: 2, minHeight: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
-                  {dayLogs.slice(0, 3).map((l, j) => (
-                    <div key={j} style={{
-                      width: 4, height: 4, borderRadius: '50%',
-                      background: l.delta > 0 ? 'var(--brass)' : 'var(--negative)',
-                      opacity: 0.8,
-                    }} />
-                  ))}
-                </div>
+                {/* Activity dots — hidden when anchored */}
+                {!anchored && (
+                  <div style={{ display: 'flex', gap: 2, minHeight: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+                    {dayLogs.slice(0, 3).map((l, j) => (
+                      <div key={j} style={{
+                        width: 4, height: 4, borderRadius: '50%',
+                        background: l.delta > 0 ? 'var(--brass)' : 'var(--negative)',
+                        opacity: 0.8,
+                      }} />
+                    ))}
+                  </div>
+                )}
+                {anchored && <div style={{ minHeight: 6 }} />}
 
-                {total !== 0 && (
+                {total !== 0 && !anchored && (
                   <span style={{
                     fontSize: '0.5rem',
                     fontFamily: 'DM Mono, monospace',

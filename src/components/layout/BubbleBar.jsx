@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { getLevelForBubbles, getProgressToNextLevel } from '../../constants/levels'
 import { useStore } from '../../store/useStore'
+import { soundBubbles } from '../../lib/feedback'
 
 // ── Odometer hook — counts from prev value to new value ──────────
 function useAnimatedNumber(value, duration = 700) {
@@ -16,7 +17,7 @@ function useAnimatedNumber(value, duration = 700) {
     const start = performance.now()
     function tick(now) {
       const t = Math.min((now - start) / duration, 1)
-      const eased = 1 - Math.pow(1 - t, 3) // ease-out cubic
+      const eased = 1 - Math.pow(1 - t, 3)
       setDisplayed(Math.round(from + (to - from) * eased))
       if (t < 1) rafRef.current = requestAnimationFrame(tick)
       else { prevRef.current = to; setDisplayed(to) }
@@ -35,8 +36,33 @@ export default function BubbleBar({ onManualAlert }) {
   const level   = getLevelForBubbles(bubbles)
   const { progress, next } = getProgressToNextLevel(bubbles)
   const isNegative   = bubbles < 0
-  const [pulsing, setPulsing] = useState(false)
-  const displayedBubbles = useAnimatedNumber(bubbles)
+  const [pulsing, setPulsing]                 = useState(false)
+  const [hexClicked, setHexClicked]           = useState(false)
+  const [progressTooltip, setProgressTooltip] = useState(false)
+  const [countPulsing, setCountPulsing]       = useState(false)
+  const [countPulseKey, setCountPulseKey]     = useState(0)
+  const displayedBubbles                      = useAnimatedNumber(bubbles)
+
+  const COUNT_BUBBLES = [
+    { x:  -6, r: 3,   delay: 0   },
+    { x:   8, r: 4,   delay: 110 },
+    { x: -14, r: 2.5, delay: 220 },
+    { x:  14, r: 3.5, delay: 300 },
+    { x:   2, r: 4.5, delay: 160 },
+  ]
+
+  // Play bubble pops whenever the bubble count changes
+  const prevBubblesRef = useRef(bubbles)
+  useEffect(() => {
+    if (prevBubblesRef.current === bubbles) return
+    prevBubblesRef.current = bubbles
+    soundBubbles(COUNT_BUBBLES)
+  }, [bubbles]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleHexClick() {
+    setHexClicked(true)
+    setTimeout(() => setHexClicked(false), 500)
+  }
 
   function handleManualAlert() {
     setPulsing(true)
@@ -44,16 +70,45 @@ export default function BubbleBar({ onManualAlert }) {
     onManualAlert()
   }
 
+  function handleCountClick() {
+    setCountPulseKey(k => k + 1)
+    setCountPulsing(true)
+    setTimeout(() => setCountPulsing(false), 1600)
+    soundBubbles(COUNT_BUBBLES)
+  }
+
   return (
     <div style={{ borderBottom: '1px solid var(--border-dim)', background: 'var(--bg-panel-alt)', flexShrink: 0 }}>
       <div className="flex items-center gap-3 lg:gap-5 px-4 lg:px-6 py-2.5">
 
-        {/* Level badge */}
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="hexagon flex items-center justify-center font-mono font-bold"
-            style={{ width: 28, height: 32, background: 'rgba(201,168,76,0.12)', color: 'var(--brass)', fontSize: '0.65rem', border: '1px solid var(--border)' }}
-          >
-            {level.level}
+        {/* Level badge — SVG hex so stroke is never clipped */}
+        <div className="flex items-center gap-2 shrink-0" style={{ cursor: 'pointer' }} onClick={handleHexClick}>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <svg viewBox="0 0 28 32" width="28" height="32">
+              <polygon
+                points="14,1.5 26.5,8.5 26.5,23.5 14,30.5 1.5,23.5 1.5,8.5"
+                fill={hexClicked ? 'rgba(201,168,76,0.28)' : 'rgba(201,168,76,0.10)'}
+                stroke="var(--brass)"
+                strokeWidth="1.5"
+                style={{ transition: 'fill 0.2s' }}
+              />
+              <text x="14" y="20.5" textAnchor="middle" style={{
+                fontFamily: 'DM Mono, monospace',
+                fontSize: 10, fontWeight: 700,
+                fill: 'var(--brass)',
+              }}>
+                {level.level}
+              </text>
+            </svg>
+            {/* Pulse ring */}
+            {hexClicked && (
+              <div style={{
+                position: 'absolute', inset: -5, borderRadius: 3,
+                border: '1.5px solid var(--brass)',
+                animation: 'hexPulse 0.5s ease-out forwards',
+                pointerEvents: 'none',
+              }} />
+            )}
           </div>
           <div className="leading-none hidden sm:block">
             <div className="label-xs mb-0.5">Level {level.level}</div>
@@ -65,10 +120,16 @@ export default function BubbleBar({ onManualAlert }) {
 
         <div className="w-px h-7 shrink-0" style={{ background: 'var(--border-dim)' }} />
 
-        {/* Progress — spring transition */}
-        <div className="flex-1 min-w-0">
+        {/* Progress */}
+        <div
+          className="flex-1 min-w-0"
+          style={{ position: 'relative', cursor: next ? 'pointer' : 'default' }}
+          onClick={() => next && setProgressTooltip(v => !v)}
+          onMouseEnter={() => next && setProgressTooltip(true)}
+          onMouseLeave={() => setProgressTooltip(false)}
+        >
           <div className="flex justify-between items-baseline mb-1">
-            <span className="label-xs truncate">{next ? `To ${next.name}` : 'Max rank'}</span>
+            <span className="label-xs truncate">{next ? `To ${next.name.slice(0,8)}…` : 'Max rank'}</span>
             {next && <span className="label-xs ml-2 shrink-0">{Math.max(0, next.min - bubbles).toLocaleString()}</span>}
           </div>
           <div className="h-px w-full" style={{ background: 'var(--border-dim)', position: 'relative' }}>
@@ -79,18 +140,54 @@ export default function BubbleBar({ onManualAlert }) {
               transition: 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)',
             }} />
           </div>
+          {/* Tooltip — below the bar so it doesn't go off-screen */}
+          {progressTooltip && next && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 10px)', left: '50%',
+              transform: 'translateX(-50%)',
+              background: 'var(--bg-panel)', border: '1px solid var(--border)',
+              borderRadius: 2, padding: '7px 12px', whiteSpace: 'nowrap',
+              fontFamily: 'DM Sans, sans-serif', fontSize: '0.72rem', color: 'var(--text-1)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+              pointerEvents: 'none', zIndex: 50,
+            }}>
+              <span style={{ color: 'var(--text-3)' }}>To </span>
+              <span style={{ color: 'var(--brass)', fontWeight: 600 }}>{next.name}</span>
+              <span style={{ color: 'var(--text-3)' }}> — </span>
+              <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 700 }}>{Math.max(0, next.min - bubbles).toLocaleString()}</span>
+              <span style={{ color: 'var(--text-3)' }}> 🫧 to go</span>
+            </div>
+          )}
         </div>
 
         <div className="w-px h-7 shrink-0" style={{ background: 'var(--border-dim)' }} />
 
-        {/* Bubble count — animated odometer */}
-        <div className="text-right shrink-0">
+        {/* Bubble count — click for bubble burst */}
+        <div
+          className="text-right shrink-0"
+          style={{ position: 'relative', cursor: 'pointer', userSelect: 'none' }}
+          onClick={handleCountClick}
+        >
           <div className="label-xs mb-0.5">🫧 Bubbles</div>
           <div className="font-mono font-bold leading-none"
             style={{ fontSize: '1.2rem', color: isNegative ? 'var(--negative)' : 'var(--brass)', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}
           >
             {isNegative ? '−' : ''}{Math.abs(displayedBubbles).toLocaleString()}
           </div>
+          {/* Bubbles */}
+          {countPulsing && COUNT_BUBBLES.map((b, i) => (
+            <div key={`${countPulseKey}-b${i}`} style={{
+              position: 'absolute',
+              left: `calc(50% + ${b.x}px)`,
+              bottom: '70%',
+              width: b.r * 2, height: b.r * 2,
+              borderRadius: '50%',
+              border: '1px solid var(--brass)',
+              opacity: 0,
+              pointerEvents: 'none',
+              animation: `bubbleRiseSmall 1.4s ease-out ${b.delay}ms forwards`,
+            }} />
+          ))}
         </div>
 
         <div className="w-px h-7 shrink-0" style={{ background: 'var(--border-dim)' }} />

@@ -1,9 +1,17 @@
 /**
- * Geometric Bauhaus-style sea animal illustrations.
- * Each animal is a bold constructivist silhouette — reduced to
- * pure geometry in the Cassandre / Herbert Bayer tradition.
- * Rendered in the aqua accent colour at configurable opacity.
+ * Sea animal illustrations — two styles share one API.
+ *
+ *   variant="halftone"  (default) — soft stippled dot-work silhouettes,
+ *                                    poses traced from reference photos.
+ *   variant="lineart"             — the original geometric Bauhaus line work,
+ *                                    retained so we can switch back any time.
+ *
+ * Both render in the aqua accent colour at a configurable size / opacity.
  */
+
+/* ══════════════════════════════════════════════════════════════════
+   1.  LINE-ART STYLE  (original — kept for fallback)
+   ══════════════════════════════════════════════════════════════════ */
 
 function Seahorse({ color, size }) {
   return (
@@ -224,9 +232,7 @@ function BlueWhale({ color, size }) {
   )
 }
 
-/* ── Public API ─────────────────────────────────────────────── */
-
-const ANIMAL_COMPONENTS = {
+const LINEART_COMPONENTS = {
   Seahorse:   Seahorse,
   Pufferfish: Pufferfish,
   Barracuda:  Barracuda,
@@ -236,21 +242,219 @@ const ANIMAL_COMPONENTS = {
   'Blue Whale':BlueWhale,
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   2.  HALFTONE STYLE  (default — dot-work silhouettes)
+   Polygon silhouettes + Delaunay-free hex-grid stipple.  Dots are
+   generated once at module load and stored as markup strings.
+   ══════════════════════════════════════════════════════════════════ */
+
+function pip(px, py, poly) {
+  let i, j, c = false
+  for (i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1]
+    if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) c = !c
+  }
+  return c
+}
+function insideAny(x, y, ps) { for (let i = 0; i < ps.length; i++) if (pip(x, y, ps[i])) return true; return false }
+function bboxM(ps) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9
+  for (let k = 0; k < ps.length; k++) { const p = ps[k]; for (let i = 0; i < p.length; i++) { if (p[i][0] < x0) x0 = p[i][0]; if (p[i][0] > x1) x1 = p[i][0]; if (p[i][1] < y0) y0 = p[i][1]; if (p[i][1] > y1) y1 = p[i][1] } }
+  return { x0, y0, x1, y1 }
+}
+function mirror(h, W) { const o = h.slice(); for (let i = h.length - 2; i >= 1; i--) o.push([W - h[i][0], h[i][1]]); return o }
+const DIRS = [[1,0],[0.7,0.7],[0,1],[-0.7,0.7],[-1,0],[-0.7,-0.7],[0,-1],[0.7,-0.7]]
+function halftone(ps, g, mR) {
+  const bb = bboxM(ps), H = bb.y1 - bb.y0; let s = '', row = 0
+  for (let y = bb.y0 + g * 0.4; y < bb.y1 + g; y += g * 0.87) {
+    const off = (row % 2) * g * 0.5; row++
+    for (let x = bb.x0 - g + off; x < bb.x1 + g; x += g) {
+      if (!insideAny(x, y, ps)) continue
+      let n = 0; for (let d = 0; d < 8; d++) { if (insideAny(x + DIRS[d][0] * g, y + DIRS[d][1] * g, ps)) n++ }
+      const e = Math.pow(n / 8, 0.6), fy = (y - bb.y0) / H, t = 0.32 + 0.68 * fy, r = mR * t * e
+      if (r < 0.4) continue
+      s += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + r.toFixed(2) + '" fill="currentColor"/>'
+    }
+  }
+  return s
+}
+function smooth(pts, k) {
+  const n = pts.length, o = []
+  for (let i = 0; i < n; i++) {
+    const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n]
+    for (let j = 0; j < k; j++) {
+      const t = j / k, t2 = t * t, t3 = t2 * t
+      o.push([
+        0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
+        0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3),
+      ])
+    }
+  }
+  return o
+}
+function spiral(cx, cy, a0, a1, r0, r1, w0, w1) {
+  const N = 44, L = [], R = []
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, ang = (a0 + (a1 - a0) * t) * Math.PI / 180, r = r0 + (r1 - r0) * t, x = cx + r * Math.cos(ang), y = cy + r * Math.sin(ang)
+    const da = (a1 - a0) * Math.PI / 180 / N, dx = Math.cos(ang) * (r1 - r0) / N - r * Math.sin(ang) * da, dy = Math.sin(ang) * (r1 - r0) / N + r * Math.cos(ang) * da
+    const ln = Math.hypot(dx, dy) || 1, nx = -dy / ln, ny = dx / ln, hw = (w0 + (w1 - w0) * t) / 2 + 1.1
+    L.push([x + nx * hw, y + ny * hw]); R.push([x - nx * hw, y - ny * hw])
+  }
+  return L.concat(R.reverse())
+}
+function ribbon(p0, pc, p1, w0, mw) {
+  mw = mw || 1.4; const N = 20, L = [], Rr = []
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, mt = 1 - t, x = mt * mt * p0[0] + 2 * mt * t * pc[0] + t * t * p1[0], y = mt * mt * p0[1] + 2 * mt * t * pc[1] + t * t * p1[1]
+    const dx = 2 * mt * (pc[0] - p0[0]) + 2 * t * (p1[0] - pc[0]), dy = 2 * mt * (pc[1] - p0[1]) + 2 * t * (p1[1] - pc[1])
+    const ln = Math.hypot(dx, dy) || 1, nx = -dy / ln, ny = dx / ln, hw = w0 * (1 - t) / 2 + mw
+    L.push([x + nx * hw, y + ny * hw]); Rr.push([x - nx * hw, y - ny * hw])
+  }
+  return L.concat(Rr.reverse())
+}
+function curl(tip, a0, sw, r0, w0) {
+  const c = [tip[0] - r0 * Math.cos(a0 * Math.PI / 180), tip[1] - r0 * Math.sin(a0 * Math.PI / 180)]
+  return spiral(c[0], c[1], a0, a0 + sw, r0, r0 * 0.32, w0, 1.6)
+}
+function offsetSpine(pts, wid) {
+  const L = [], R = [], n = pts.length
+  for (let i = 0; i < n; i++) {
+    const p = pts[i]; let dx, dy
+    if (i === 0) { dx = pts[1][0] - p[0]; dy = pts[1][1] - p[1] }
+    else if (i === n - 1) { dx = p[0] - pts[i - 1][0]; dy = p[1] - pts[i - 1][1] }
+    else { dx = pts[i + 1][0] - pts[i - 1][0]; dy = pts[i + 1][1] - pts[i - 1][1] }
+    const ln = Math.hypot(dx, dy) || 1, nx = -dy / ln, ny = dx / ln, w = wid[i]
+    L.push([p[0] + nx * w, p[1] + ny * w]); R.push([p[0] - nx * w, p[1] - ny * w])
+  }
+  return L.concat(R.reverse())
+}
+function ellipse(cx, cy, rx, ry) { const p = []; for (let i = 0; i < 34; i++) { const t = i / 34 * Math.PI * 2; p.push([cx + rx * Math.cos(t), cy + ry * Math.sin(t)]) } return p }
+function egg(cx, cy, rx, ry, tp) { const p = []; for (let i = 0; i < 40; i++) { const t = i / 40 * Math.PI * 2, ct = Math.cos(t), st = Math.sin(t); p.push([cx + rx * (1 - tp * st) * ct, cy + ry * st]) } return p }
+function spikeBody(cx, cy, rx, ry, N, o, inn) {
+  const p = []
+  for (let i = 0; i < N; i++) {
+    const t = (i / N) * Math.PI * 2 - Math.PI / 2; p.push([cx + rx * o * Math.cos(t), cy + ry * o * Math.sin(t)])
+    const t2 = ((i + 0.5) / N) * Math.PI * 2 - Math.PI / 2; p.push([cx + rx * inn * Math.cos(t2), cy + ry * inn * Math.sin(t2)])
+  }
+  return p
+}
+function fit(ps, pad) {
+  const nb = bboxM(ps), sx = pad - nb.x0, sy = pad - nb.y0
+  const o = ps.map(poly => poly.map(p => [p[0] + sx, p[1] + sy]))
+  return { polys: o, vbw: (nb.x1 - nb.x0) + pad * 2, vbh: (nb.y1 - nb.y0) + pad * 2 }
+}
+function rotateFit(ps, deg, pad) {
+  const bb = bboxM(ps), cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2, th = deg * Math.PI / 180, co = Math.cos(th), si = Math.sin(th)
+  const o = ps.map(poly => poly.map(p => { const dx = p[0] - cx, dy = p[1] - cy; return [cx + dx * co - dy * si, cy + dx * si + dy * co] }))
+  return fit(o, pad)
+}
+
+/* ── Silhouettes (traced from reference photos) ────────────────── */
+const _WH = [[[30,84],[26,72],[36,62],[58,56],[96,52],[150,49],[210,47],[268,48],[300,50],[312,40],[324,42],[326,52],[356,56],[388,62],[406,68],[434,46],[418,68],[436,92],[406,78],[374,86],[330,93],[288,97],[250,98],[238,120],[224,114],[232,98],[196,100],[140,101],[92,99],[58,95],[34,88]]]
+const _MR = [mirror([[180,46],[190,46],[198,22],[208,26],[202,52],[224,58],[262,78],[300,116],[326,156],[300,176],[262,180],[226,176],[206,188],[196,210],[190,250],[186,300],[182,316],[180,316]], 360)]
+const _BA = [[[12,70],[46,60],[96,52],[156,47],[220,45],[280,47],[330,52],[360,50],[378,42],[392,52],[410,56],[448,40],[434,66],[452,92],[416,72],[388,76],[360,80],[348,92],[338,88],[350,78],[300,84],[240,88],[180,90],[120,88],[70,84],[34,80]]]
+const _PF = (() => { const p = [spikeBody(130,125,90,84,22,1.0,0.92)]; p.push([[214,120],[256,96],[244,124],[256,150]]); p.push([[150,206],[136,230],[170,224]]); p.push([[150,44],[136,22],[170,28]]); return p })()
+const _OR = (() => {
+  const b = offsetSpine([[143,30],[150,58],[164,92],[168,128],[160,166],[148,202],[140,234],[140,258]], [7,22,31,32,28,22,15,10])
+  const d = [[150,58],[116,18],[107,30],[140,66]]
+  const f = ribbon([150,150],[122,182],[104,212],15,2)
+  const k = [[140,252],[168,258],[192,276],[182,288],[156,278],[150,294],[128,292],[122,274],[136,262]]
+  return rotateFit([b, d, f, k], -38, 12)
+})()
+const _SH = (() => {
+  const bp = [[98,54],[110,60],[126,76],[144,96],[166,116],[170,124],[166,130],[150,124],[136,114],[124,104],[114,100],[104,112],[112,132],[126,164],[138,196],[141,226],[134,256],[121,280],[113,291],[99,288],[98,256],[100,220],[101,184],[98,152],[91,126],[88,108],[86,90],[92,72]]
+  return [smooth(bp,8), spiral(128,309,228.2,-275.8,25.5,5,14,1.4),
+    [[90,62],[84,40],[98,58]],[[99,60],[96,34],[108,56]],[[107,58],[110,36],[115,58]],
+    [[97,160],[86,158],[97,172]],[[99,192],[88,193],[99,206]],[[98,226],[87,228],[98,240]]]
+})()
+const _OC = (() => {
+  const p = [egg(160,74,58,68,0.16)]
+  const arms = [
+    { b:[170,128], c:[176,180], t:[174,226], w:15, ca:95 },
+    { b:[188,120], c:[201,172], t:[203,220], w:15, ca:80 },
+    { b:[203,108], c:[226,158], t:[236,204], w:14, ca:62 },
+    { b:[214,96],  c:[244,142], t:[254,188], w:13, ca:48 },
+  ]
+  for (let s = 0; s < 2; s++) {
+    for (let i = 0; i < arms.length; i++) {
+      const a = arms[i]
+      const b = s ? [320 - a.b[0], a.b[1]] : a.b, c = s ? [320 - a.c[0], a.c[1]] : a.c, t = s ? [320 - a.t[0], a.t[1]] : a.t
+      const ca = s ? 180 - a.ca : a.ca, cs = s ? -300 : 300
+      p.push(ribbon(b, c, t, a.w, 2.2)); p.push(curl(t, ca, cs, 11, 8))
+    }
+  }
+  return fit(p, 12)
+})()
+
+/* Per-animal stipple density (g = grid, r = max dot radius) and a size
+   boost so wide / tall silhouettes carry equal visual weight. */
+function build(polys, g, r, boost) {
+  const ft = fit(polys, 8)
+  const vbw = ft.vbw, vbh = ft.vbh
+  let base = boost / Math.sqrt(vbw * vbh)
+  let wf = vbw * base, hf = vbh * base
+  const m = Math.max(wf, hf)
+  if (m > 1.9) { const kk = 1.9 / m; wf *= kk; hf *= kk }
+  return { vbw, vbh, wFactor: wf, hFactor: hf, dots: halftone(ft.polys, g, r) }
+}
+function buildFitted(ft, g, r, boost) {
+  const vbw = ft.vbw, vbh = ft.vbh
+  let base = boost / Math.sqrt(vbw * vbh)
+  let wf = vbw * base, hf = vbh * base
+  const m = Math.max(wf, hf)
+  if (m > 1.9) { const kk = 1.9 / m; wf *= kk; hf *= kk }
+  return { vbw, vbh, wFactor: wf, hFactor: hf, dots: halftone(ft.polys, g, r) }
+}
+
+const HALFTONE = {
+  Seahorse:    buildFitted(fit(_SH, 8), 4,   2.0, 1.28),
+  Pufferfish:  build(_PF, 6,   2.9, 1.05),
+  Barracuda:   build(_BA, 4.5, 2.2, 1.35),
+  Octopus:     buildFitted(_OC, 5.5, 2.6, 1.0),
+  'Manta Ray': build(_MR, 6,   3.0, 1.0),
+  Orca:        buildFitted(_OR, 5,   2.5, 1.0),
+  'Blue Whale':build(_WH, 6,   2.9, 1.35),
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   3.  PUBLIC COMPONENT
+   ══════════════════════════════════════════════════════════════════ */
+
 export default function SeaAnimalIllustration({
-  animal,        // e.g. "Orca"
-  size = 120,    // base height in px
-  opacity = 1,   // overall opacity
-  color = 'currentColor',
+  animal,                 // e.g. "Orca"
+  size = 120,             // base px size (geometric-mean dimension)
+  opacity = 1,            // overall opacity (accepts a CSS var string too)
+  color = 'currentColor', // accent colour
   className = '',
   style = {},
+  variant = 'halftone',   // 'halftone' | 'lineart'
 }) {
-  const Component = ANIMAL_COMPONENTS[animal]
-  if (!Component) return null
+  if (variant === 'lineart') {
+    const Component = LINEART_COMPONENTS[animal]
+    if (!Component) return null
+    return (
+      <div className={className} style={{ opacity, display: 'inline-flex', ...style }}>
+        <Component color={color} size={size} />
+      </div>
+    )
+  }
+
+  const cfg = HALFTONE[animal]
+  if (!cfg) return null
+  const W = Math.round(size * cfg.wFactor)
+  const H = Math.round(size * cfg.hFactor)
   return (
-    <div className={className} style={{ opacity, display: 'inline-flex', ...style }}>
-      <Component color={color} size={size}/>
+    <div className={className} style={{ opacity, display: 'inline-flex', color, ...style }}>
+      <svg
+        viewBox={`0 0 ${cfg.vbw} ${cfg.vbh}`}
+        width={W}
+        height={H}
+        style={{ display: 'block' }}
+        dangerouslySetInnerHTML={{ __html: cfg.dots }}
+      />
     </div>
   )
 }
 
-export { ANIMAL_COMPONENTS }
+export { LINEART_COMPONENTS, HALFTONE }
+export const ANIMAL_COMPONENTS = LINEART_COMPONENTS

@@ -14,7 +14,7 @@ export const BUBBLE_RULES = {
   SHOULDER_DONE:      { label: 'Shoulder strengthening', delta: +20, category: 'habit' },
   YOGA:               { label: 'Yoga / mobility',    delta: +20, category: 'activity' },
   PROTEIN_POWDER:     { label: 'Had vegan protein',  delta: +10, category: 'habit'    },
-  SLEEP_7:            { label: 'Slept 7+ hrs',       delta: +20, category: 'habit'    },
+  SLEEP_7:            { label: 'Slept on time',       delta: +20, category: 'habit'    },
   FINISHED_BOOK:      { label: 'Finished a book',    delta: +100,category: 'milestone' },
 
   // Negative

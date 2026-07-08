@@ -13,11 +13,32 @@ import { useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useStore } from '../store/useStore'
 
-const SYNC_KEYS = ['bubbles', 'logs', 'weightLog', 'streaks', 'settings', 'cheatAllowances', 'seenAlertIds']
+const SYNC_KEYS = ['bubbles', 'logs', 'weightLog', 'streaks', 'settings', 'cheatAllowances', 'seenAlertIds', 'penaltyEpoch', 'mandatoryActivities', 'anchorState']
 const DEBOUNCE_MS = 2000
+const PENDING_KEY = 'dont-drift-pending-sync'
 
 function pickSyncKeys(state) {
   return Object.fromEntries(SYNC_KEYS.map(k => [k, state[k]]))
+}
+
+// Persist a write that couldn't reach the cloud (offline / failed) so it can be
+// retried on reconnect or next launch.
+function stashPending(userId, payload) {
+  try { localStorage.setItem(PENDING_KEY, JSON.stringify({ userId, payload })) } catch (_) {}
+}
+function clearPending() {
+  try { localStorage.removeItem(PENDING_KEY) } catch (_) {}
+}
+async function flushPending() {
+  let pending
+  try { pending = JSON.parse(localStorage.getItem(PENDING_KEY)) } catch (_) { return }
+  if (!pending?.userId) return
+  const { error } = await supabase.from('user_data').upsert({
+    user_id:    pending.userId,
+    data:       pending.payload,
+    updated_at: new Date().toISOString(),
+  })
+  if (!error) clearPending()
 }
 
 export function useSync() {
@@ -79,6 +100,18 @@ export function useSync() {
     return () => subscription.unsubscribe()
   }, [initSync])
 
+  // ── Flush any queued offline write on reconnect / tab return ─────────────
+  useEffect(() => {
+    const tryFlush = () => { if (navigator.onLine) flushPending() }
+    window.addEventListener('online', tryFlush)
+    document.addEventListener('visibilitychange', tryFlush)
+    tryFlush() // attempt once on mount (e.g. data queued from a previous launch)
+    return () => {
+      window.removeEventListener('online', tryFlush)
+      document.removeEventListener('visibilitychange', tryFlush)
+    }
+  }, [])
+
   // ── Debounced write on every state change ───────────────────────────────
   useEffect(() => {
     if (!userIdRef.current || !initializedRef.current) return
@@ -87,12 +120,18 @@ export function useSync() {
     timerRef.current = setTimeout(async () => {
       if (!userIdRef.current) return
       const payload = pickSyncKeys(useStore.getState())
+      if (!navigator.onLine) { stashPending(userIdRef.current, payload); return }
       const { error } = await supabase.from('user_data').upsert({
         user_id:    userIdRef.current,
         data:       payload,
         updated_at: new Date().toISOString(),
       })
-      if (error) console.error('Supabase sync write error:', error)
+      if (error) {
+        console.error('Supabase sync write error:', error)
+        stashPending(userIdRef.current, payload)
+      } else {
+        clearPending()
+      }
     }, DEBOUNCE_MS)
 
     return () => clearTimeout(timerRef.current)
@@ -106,5 +145,8 @@ export function useSync() {
     store.settings,
     store.cheatAllowances,
     store.seenAlertIds,
+    store.penaltyEpoch,
+    store.mandatoryActivities,
+    store.anchorState,
   ])
 }

@@ -26,6 +26,8 @@
   --negative-dim: #3a6e96;
 
   --grid-line: rgba(201,168,76,0.04);
+
+  --watermark-opacity: 0.28;   /* halftone rank illustration behind the gauge (night) */
 }
 
 [data-theme="light"] {
@@ -51,6 +53,53 @@
   --negative-dim: #1a4880;
 
   --grid-line: rgba(139,90,20,0.06);
+
+  --watermark-opacity: 0.22;   /* halftone rank illustration behind the gauge (day) */
+}
+
+/* ─── Day / night within-theme shift ─────────────────────────────
+   Defaults above are the NIGHT tone for dark and the DAY tone for light.
+   These two blocks shift backgrounds toward the opposite time of day.
+   Only background-family tokens move, so contrast/accents stay safe.      */
+html[data-theme="dark"][data-time="day"] {
+  --bg:           #103c47;  /* sunlit underwater teal */
+  --bg-panel:     #154550;
+  --bg-panel-alt: #0c333d;
+  --grid-line:    rgba(126,207,192,0.05);
+  --border-dim:   rgba(126,207,192,0.16);
+}
+html[data-theme="light"][data-time="night"] {
+  --bg:           #cdd3c2;  /* cooler sea-glass dusk */
+  --bg-panel:     #c4cbb8;
+  --bg-panel-alt: #bcc3b0;
+  --grid-line:    rgba(90,110,90,0.07);
+  --text-3:       #5e6a5e;
+}
+
+/* ─── Anchor microinteractions ───────────────────────────────── */
+@keyframes anchorDropIn {
+  from { transform: translateY(-20px); opacity: 0; }
+  60%  { transform: translateY(4px); }
+  80%  { transform: translateY(-2px); }
+  to   { transform: translateY(0); opacity: 1; }
+}
+@keyframes anchorRiseOut {
+  from { transform: translateY(0); opacity: 1; }
+  to   { transform: translateY(-28px); opacity: 0; }
+}
+@keyframes anchorCostFloat {
+  0%   { transform: translate(-50%, -50%); opacity: 1; }
+  60%  { opacity: 0.9; }
+  100% { transform: translate(-50%, calc(-50% - 60px)); opacity: 0; }
+}
+@keyframes anchorModalIn {
+  from { transform: translate(-50%, calc(-50% + 12px)); opacity: 0; }
+  to   { transform: translate(-50%, -50%); opacity: 1; }
+}
+.anchor-rising { animation: anchorFadeUp 0.35s ease-out forwards; }
+@keyframes anchorFadeUp {
+  from { opacity: 1; }
+  to   { opacity: 0; transform: translateY(-8px); }
 }
 
 /* ─── BASE ───────────────────────────────────────────────────── */
@@ -191,7 +240,7 @@
     flex-direction: column;
     align-items: center;
     gap: 4px;
-    padding: 12px 8px;
+    padding: 12px 10px;
     color: var(--text-3);
     cursor: pointer;
     position: relative;
@@ -274,6 +323,30 @@
 @keyframes rippleAnim {
   to { transform: scale(4); opacity: 0; }
 }
+@keyframes ringPulse {
+  0%   { transform: scale(1);   opacity: 0.55; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+@keyframes ringPulseCenter {
+  0%   { transform: translate(-50%, -50%) scale(1);   opacity: 0.5; }
+  100% { transform: translate(-50%, -50%) scale(1.9); opacity: 0; }
+}
+@keyframes bubbleRiseSmall {
+  0%   { opacity: 0;    transform: translateY(0) scale(0.3); }
+  20%  { opacity: 0.65; transform: translateY(-8px) scale(1); }
+  75%  { opacity: 0.4; }
+  100% { opacity: 0;    transform: translateY(-44px) scale(0.7); }
+}
+@keyframes bubbleRiseBig {
+  0%   { opacity: 0;    transform: translateY(0) scale(0.3); }
+  16%  { opacity: 0.6;  transform: translateY(-10px) scale(1); }
+  75%  { opacity: 0.35; }
+  100% { opacity: 0;    transform: translateY(-88px) scale(0.6); }
+}
+@keyframes hexPulse {
+  0%   { opacity: 0.9; transform: scale(1); }
+  100% { opacity: 0;   transform: scale(1.8); }
+}
 @keyframes pageFadeIn {
   from { opacity: 0; transform: translateY(5px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -284,3 +357,22 @@
 .animate-fade-in    { animation: fadeIn     0.35s ease; }
 .animate-bubble-pop { animation: bubblePop  0.45s cubic-bezier(0.16, 1, 0.3, 1); }
 .animate-page-in    { animation: pageFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* ─── Ambient water background — slow caustic drift ───────────── */
+@keyframes waterDriftA {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(-18px, 12px, 0) scale(1.04); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes waterDriftB {
+  0%   { transform: translate3d(0, 0, 0) scale(1.02); }
+  50%  { transform: translate3d(16px, -10px, 0) scale(1); }
+  100% { transform: translate3d(0, 0, 0) scale(1.02); }
+}
+.water-bg { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.water-bg .layer-a { animation: waterDriftA 26s ease-in-out infinite; transform-origin: center; }
+.water-bg .layer-b { animation: waterDriftB 34s ease-in-out infinite; transform-origin: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .water-bg .layer-a, .water-bg .layer-b { animation: none; }
+}

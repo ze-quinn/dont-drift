@@ -1,45 +1,36 @@
 // POST /api/subscribe
-// Saves the push subscription to Vercel Edge Config via the Vercel API.
-// Edge Config is free, built into Vercel — no third-party service needed.
+// Saves the push subscription to Supabase, keyed by user_id from the JWT.
+
+import { createClient } from '@supabase/supabase-js'
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   const subscription = req.body
   if (!subscription || !subscription.endpoint) {
     return res.status(400).json({ error: 'Invalid subscription object' })
   }
 
-  const edgeConfigId = process.env.EDGE_CONFIG_ID       // e.g. ecfg_xxxx
-  const vercelToken  = process.env.VERCEL_API_TOKEN      // from Vercel account settings
+  const jwt = (req.headers.authorization ?? '').replace('Bearer ', '')
+  if (!jwt) return res.status(401).json({ error: 'Missing auth token' })
 
-  if (!edgeConfigId || !vercelToken) {
-    return res.status(500).json({ error: 'Edge Config not configured' })
+  const supabase = createClient(
+    process.env.VITE_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
+
+  // Verify the JWT and get the user
+  const { data: { user }, error: authErr } = await supabase.auth.getUser(jwt)
+  if (authErr || !user) return res.status(401).json({ error: 'Invalid token' })
+
+  const { error } = await supabase
+    .from('push_subscriptions')
+    .upsert({ user_id: user.id, subscription, updated_at: new Date().toISOString() })
+
+  if (error) {
+    console.error('subscribe upsert error:', error)
+    return res.status(500).json({ error: error.message })
   }
 
-  try {
-    const r = await fetch(
-      `https://api.vercel.com/v1/edge-config/${edgeConfigId}/items`,
-      {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${vercelToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          items: [{ operation: 'upsert', key: 'push_subscription', value: JSON.stringify(subscription) }],
-        }),
-      }
-    )
-    if (!r.ok) {
-      const txt = await r.text()
-      throw new Error(`Vercel API ${r.status}: ${txt}`)
-    }
-    return res.status(200).json({ ok: true })
-  } catch (err) {
-    console.error('subscribe error:', err)
-    return res.status(500).json({ error: err.message })
-  }
+  return res.status(200).json({ ok: true })
 }

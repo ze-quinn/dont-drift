@@ -3,6 +3,12 @@ import BubbleGauge from './BubbleGauge'
 import WeekView from './WeekView'
 import TaskList from '../tasks/TaskList'
 import SeaAnimalIllustration from '../SeaAnimalIllustration'
+import StreaksCard from './StreaksCard'
+import TideChart from './TideChart'
+import WeeklyRecap from '../celebrations/WeeklyRecap'
+import PersonalBestBanner from '../celebrations/PersonalBestBanner'
+import RescueCard from '../celebrations/RescueCard'
+import AnchorPanel from './AnchorPanel'
 import { useStore } from '../../store/useStore'
 import { getLevelForBubbles } from '../../constants/levels'
 import { useAlertTrigger } from '../../context/AlertContext'
@@ -48,6 +54,9 @@ export default function Dashboard() {
         >
           Don't Drift
         </h1>
+        <div className="label-xs" style={{ marginTop: 6 }}>
+          JUST KEEP SWIMMING
+        </div>
         {/* Art deco underline rule */}
         <div className="flex items-center gap-3 mt-3">
           <div className="h-px w-32" style={{ background: 'var(--brass)' }} />
@@ -56,29 +65,38 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Contextual cards — only render when relevant */}
+      <WeeklyRecap />
+      <PersonalBestBanner />
+      <RescueCard />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* ── Left column ── */}
         <div className="lg:col-span-1 space-y-5">
 
           {/* Gauge panel */}
-          <div className="panel p-5 flex flex-col items-center">
-            {/* Gauge */}
-            <div>
+          <div className="panel p-5 flex flex-col items-center relative overflow-hidden">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 0 }}>
+              <SeaAnimalIllustration animal={level.name} size={160} color="var(--aqua)" opacity="var(--watermark-opacity)" />
+            </div>
+            <div style={{ position: 'relative', zIndex: 1 }}>
               <BubbleGauge />
             </div>
-            {/* Level name beneath gauge */}
-            <div style={{ textAlign: 'center', marginTop: 2, paddingBottom: 4 }}>
-              <div className="font-serif font-light" style={{ fontSize: '1.1rem', color: 'var(--brass)', letterSpacing: '0.04em' }}>
-                {level.name}
-              </div>
-              <div className="label-xs" style={{ marginTop: 2 }}>Level {level.level}</div>
-            </div>
           </div>
+
+          {/* Streak strip */}
+          <StreaksCard />
+
+          {/* Weekly tide chart */}
+          <TideChart />
 
           {/* Week view */}
           <div className="panel p-4">
             <WeekView />
           </div>
+
+          {/* Anchor (pause) */}
+          <AnchorPanel />
         </div>
 
         {/* ── Right column ── */}

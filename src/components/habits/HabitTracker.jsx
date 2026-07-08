@@ -3,6 +3,7 @@ import { useStore, DEFAULT_CHEAT_CONFIG } from '../../store/useStore'
 import { isWeekend } from '../../constants/activities'
 import { BUBBLE_RULES } from '../../constants/bubbles'
 import { useAlertTrigger } from '../../context/AlertContext'
+import { feedbackHabit, feedbackLoss } from '../../lib/feedback'
 
 // ── Built-in habits ────────────────────────────────────────────────────────────
 const BUILTIN_HABITS = [
@@ -35,6 +36,8 @@ function HabitRow({ habit, logged, onLog, editMode, onRemove }) {
     const id = Date.now()
     setRipples(r => [...r, id])
     setTimeout(() => setRipples(r => r.filter(x => x !== id)), 600)
+    if (habit.isPenalty) feedbackLoss()
+    else feedbackHabit()
     onLog(habit)
   }
 
@@ -309,6 +312,8 @@ export default function HabitTracker() {
   const setCheatConfig    = useStore(s => s.setCheatConfig)
   const logCheat          = useStore(s => s.logCheat)
   const undoCheat         = useStore(s => s.undoCheat)
+  const anchorState       = useStore(s => s.anchorState)
+  const weighAnchor       = useStore(s => s.weighAnchor)
   const { showAlert } = useAlertTrigger()
 
   const weekend = isWeekend()
@@ -388,6 +393,38 @@ export default function HabitTracker() {
         </div>
       )}
 
+      {/* Anchored guard */}
+      {anchorState && (
+        <div style={{
+          marginBottom: 20,
+          background: 'rgba(120,120,120,0.06)',
+          border: '1px solid rgba(160,160,160,0.18)',
+          borderRadius: 3, padding: '18px 16px',
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          gap: 10, textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 24, opacity: 0.4 }}>⚓</div>
+          <div style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.72rem', color: 'rgba(160,160,160,0.7)', letterSpacing: '0.07em' }}>
+            You're anchored
+          </div>
+          <div style={{ fontSize: '0.78rem', color: 'rgba(150,150,150,0.55)', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.6, maxWidth: 280 }}>
+            Logging habits is fine, but nothing counts toward your streak while you're anchored.
+          </div>
+          <button
+            onClick={weighAnchor}
+            style={{
+              marginTop: 2,
+              background: 'rgba(126,207,192,0.08)', border: '1px solid rgba(126,207,192,0.28)',
+              borderRadius: 2, padding: '7px 18px',
+              fontFamily: 'DM Mono, monospace', fontSize: '0.7rem',
+              color: 'var(--aqua)', letterSpacing: '0.06em', cursor: 'pointer',
+            }}
+          >
+            Weigh anchor →
+          </button>
+        </div>
+      )}
+
       {/* Good habits */}
       <div className="panel" style={{ padding: '4px 16px 8px', marginBottom: 12 }}>
         <div style={{ paddingTop: 14, marginBottom: 8 }}><SectionHeader label="Good stuff" color="var(--brass)"/></div>
@@ -421,7 +458,7 @@ export default function HabitTracker() {
         <div style={{ paddingTop: 14, marginBottom: 8 }}><SectionHeader label="Milestones" color="var(--brass)"/></div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0' }}>
           <button
-            onClick={() => !bookLogged && addBubbles('FINISHED_BOOK', BUBBLE_RULES.FINISHED_BOOK.label, BUBBLE_RULES.FINISHED_BOOK.delta)}
+            onClick={() => { if (!bookLogged) { addBubbles('FINISHED_BOOK', BUBBLE_RULES.FINISHED_BOOK.label, BUBBLE_RULES.FINISHED_BOOK.delta); feedbackGain() } }}
             disabled={bookLogged}
             style={{ width: 22, height: 22, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: bookLogged ? 'rgba(201,168,76,0.15)' : 'transparent', border: bookLogged ? '1px solid var(--brass)' : '1px solid var(--border-dim)', borderRadius: 1, cursor: bookLogged ? 'default' : 'pointer' }}>
             {bookLogged && (

@@ -1,5 +1,7 @@
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useStore } from '../../store/useStore'
 import { getLevelForBubbles, getProgressToNextLevel, LEVELS } from '../../constants/levels'
+import { soundBubbles } from '../../lib/feedback'
 
 const R = 72
 const ARC_START  = 210
@@ -22,37 +24,80 @@ export default function BubbleGauge() {
   const level   = getLevelForBubbles(bubbles)
   const { progress } = getProgressToNextLevel(bubbles)
   const isNegative = bubbles < 0
+  const [pulsing, setPulsing]   = useState(false)
+  const [pulseKey, setPulseKey] = useState(0)
+
+  const GAUGE_BUBBLES = [
+    { x:  -6, r: 5,   delay: 0   },
+    { x:  20, r: 7,   delay: 120 },
+    { x: -24, r: 4.5, delay: 240 },
+    { x:  10, r: 6,   delay: 360 },
+    { x: -14, r: 8,   delay: 180 },
+    { x:  30, r: 4,   delay: 300 },
+    { x:  -2, r: 6.5, delay: 450 },
+    { x: -32, r: 5,   delay: 90  },
+  ]
+
+  // Play bubble pops when bubbles value changes
+  const prevBubblesRef = useRef(bubbles)
+  useEffect(() => {
+    if (prevBubblesRef.current === bubbles) return
+    prevBubblesRef.current = bubbles
+    soundBubbles(GAUGE_BUBBLES)
+  }, [bubbles]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleGaugeClick() {
+    setPulseKey(k => k + 1)
+    setPulsing(true)
+    setTimeout(() => setPulsing(false), 2200)
+    soundBubbles(GAUGE_BUBBLES)
+  }
+
+  const cx = 100, cy = 100
+  const trackStart = ARC_START - ARC_SWEEP / 2
+  const trackEnd   = ARC_START + ARC_SWEEP / 2
 
   const clampedProgress = Math.min(1, Math.max(0, isNegative ? 0 : progress))
   const sweepAngle = ARC_SWEEP * clampedProgress
-  const cx = 100, cy = 100
 
-  const trackStart = ARC_START - ARC_SWEEP / 2
-  const trackEnd   = ARC_START + ARC_SWEEP / 2
-  const fillEnd    = trackStart + sweepAngle
+  // Static geometry — track arc, sunburst ticks, level ticks never change
+  const { trackPath, sunburst, levelTicks } = useMemo(() => ({
+    trackPath: describeArc(cx, cy, R, trackStart, trackEnd),
+    sunburst: Array.from({ length: 36 }).map((_, i) => {
+      const angle = (i * 360) / 36
+      const isMajor = i % 3 === 0
+      const inner = polarToCartesian(cx, cy, R + 6, angle)
+      const outer = polarToCartesian(cx, cy, R + (isMajor ? 16 : 11), angle)
+      return { inner, outer, isMajor }
+    }),
+    levelTicks: LEVELS.map((l, i) => {
+      if (i === 0) return null
+      const maxBubbles = LEVELS[LEVELS.length - 1].min
+      const frac = Math.min(l.min / maxBubbles, 0.995)
+      const tickAngle = trackStart + ARC_SWEEP * frac
+      return {
+        inner: polarToCartesian(cx, cy, R - 8, tickAngle),
+        outer: polarToCartesian(cx, cy, R + 2, tickAngle),
+      }
+    }),
+  }), [cx, cy, trackStart, trackEnd])
 
-  const trackPath = describeArc(cx, cy, R, trackStart, trackEnd)
+  const fillEnd   = trackStart + sweepAngle
   const fillPath  = sweepAngle > 1 ? describeArc(cx, cy, R, trackStart, fillEnd) : null
 
   return (
     <div className="flex flex-col items-center">
-      <div style={{ width: 200, height: 200, position: 'relative' }}>
+      <div style={{ width: 200, height: 200, position: 'relative' }} onClick={handleGaugeClick}>
         <svg viewBox="0 0 200 200" width="200" height="200">
           {/* Sunburst tick marks */}
-          {Array.from({ length: 36 }).map((_, i) => {
-            const angle = (i * 360) / 36
-            const isMajor = i % 3 === 0
-            const inner = polarToCartesian(cx, cy, R + 6, angle)
-            const outer = polarToCartesian(cx, cy, R + (isMajor ? 16 : 11), angle)
-            return (
-              <line key={i}
-                x1={inner.x} y1={inner.y}
-                x2={outer.x} y2={outer.y}
-                stroke="var(--border-dim)"
-                strokeWidth={isMajor ? 1.5 : 0.75}
-              />
-            )
-          })}
+          {sunburst.map(({ inner, outer, isMajor }, i) => (
+            <line key={i}
+              x1={inner.x} y1={inner.y}
+              x2={outer.x} y2={outer.y}
+              stroke="var(--border-dim)"
+              strokeWidth={isMajor ? 1.5 : 0.75}
+            />
+          ))}
 
           {/* Track arc */}
           <path
@@ -76,22 +121,14 @@ export default function BubbleGauge() {
           )}
 
           {/* Level tick marks */}
-          {LEVELS.map((l, i) => {
-            if (i === 0) return null
-            const maxBubbles = LEVELS[LEVELS.length - 1].min
-            const frac = Math.min(l.min / maxBubbles, 0.995)
-            const tickAngle = trackStart + ARC_SWEEP * frac
-            const inner = polarToCartesian(cx, cy, R - 8, tickAngle)
-            const outer = polarToCartesian(cx, cy, R + 2, tickAngle)
-            return (
-              <line key={i}
-                x1={inner.x} y1={inner.y}
-                x2={outer.x} y2={outer.y}
-                stroke="var(--border)"
-                strokeWidth="1.5"
-              />
-            )
-          })}
+          {levelTicks.map((t, i) => t && (
+            <line key={i}
+              x1={t.inner.x} y1={t.inner.y}
+              x2={t.outer.x} y2={t.outer.y}
+              stroke="var(--border)"
+              strokeWidth="1.5"
+            />
+          ))}
 
           {/* Defs */}
           <defs>
@@ -142,7 +179,23 @@ export default function BubbleGauge() {
               NEGATIVE
             </text>
           )}
+          {/* Invisible click target over center */}
+          <circle cx={cx} cy={cy} r="52" fill="transparent" style={{ cursor: 'pointer' }} />
         </svg>
+        {/* Bubbles rising from center */}
+        {pulsing && GAUGE_BUBBLES.map((b, i) => (
+          <div key={`${pulseKey}-b${i}`} style={{
+            position: 'absolute',
+            left: `calc(50% + ${b.x}px)`,
+            top: '45%',
+            width: b.r * 2, height: b.r * 2,
+            borderRadius: '50%',
+            border: '1.5px solid var(--brass)',
+            opacity: 0,
+            pointerEvents: 'none',
+            animation: `bubbleRiseBig 1.9s ease-out ${b.delay}ms forwards`,
+          }} />
+        ))}
       </div>
 
       {/* Level name below gauge */}

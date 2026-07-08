@@ -1,10 +1,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { MANDATORY_DEFAULTS } from '../constants/mandatory'
 
 const defaultSettings = {
   theme: 'dark',
-  alarmHour: 7,
-  alarmMinute: 0,
   shoulderTargetHour: 19,
   height: '',
   weight: '',
@@ -39,7 +38,11 @@ export const useStore = create(
       // ── Core ──────────────────────────────────────────────────────
       bubbles: 0,
       logs: [],        // { id, date, ruleKey, label, delta, note }
+      penaltyEpoch: null,  // dateString from which missed-activity penalties are enforced
+      mandatoryActivities: MANDATORY_DEFAULTS,  // user-editable list of penalised-if-skipped activities
+      anchorState: null,   // null | { since: ISO string, notifOptIn: boolean | null }
       weightLog: [],   // { date, weight }
+      sleepLogs: [],   // { id, date, hoursSlept, goal, delta }
       streaks: {},     // { activityId: number }
       settings: defaultSettings,
       healthData: defaultHealthData,
@@ -75,6 +78,83 @@ export const useStore = create(
           logs: [entry, ...state.logs].slice(0, 500),
         }))
         return entry
+      },
+
+      // ── Anchor (pause) ────────────────────────────────────────────
+      dropAnchor: () => {
+        const state = get()
+        if (state.anchorState) return
+        const id = `ANCHOR_DROP-${Date.now()}`
+        const entry = { id, date: new Date().toISOString(), ruleKey: 'ANCHOR_DROP', label: 'Dropped anchor', delta: -20, note: '' }
+        set(state => ({
+          bubbles: state.bubbles - 20,
+          logs: [entry, ...state.logs].slice(0, 500),
+          anchorState: { since: new Date().toISOString(), notifOptIn: null },
+        }))
+      },
+
+      weighAnchor: () => {
+        set({ anchorState: null })
+      },
+
+      setAnchorNotifOptIn: (val) => {
+        const current = get().anchorState
+        if (!current) return
+        set({ anchorState: { ...current, notifOptIn: val } })
+      },
+
+      // ── Missed-activity penalties ──────────────────────────────────
+      // Set the enforcement epoch once, so past history isn't penalized.
+      ensurePenaltyEpoch: () => {
+        if (!get().penaltyEpoch) set({ penaltyEpoch: new Date().toDateString() })
+      },
+
+      // Mandatory-activity config (penalised when skipped). "Keep past, stop
+      // future" — removing an entry never reverses penalties already applied.
+      addMandatoryActivity: (item) => {
+        set(state => ({ mandatoryActivities: [...state.mandatoryActivities, item] }))
+      },
+      updateMandatoryActivity: (id, patch) => {
+        set(state => ({
+          mandatoryActivities: state.mandatoryActivities.map(m => (m.id === id ? { ...m, ...patch } : m)),
+        }))
+      },
+      removeMandatoryActivity: (id) => {
+        set(state => ({ mandatoryActivities: state.mandatoryActivities.filter(m => m.id !== id) }))
+      },
+
+      // Add a penalty (or any entry) dated to a past day. Idempotent: if an
+      // entry with the same ruleKey already exists on that calendar day, no-op.
+      addBackdatedEntry: ({ dateISO, ruleKey, label, delta }) => {
+        const dayStr = new Date(dateISO).toDateString()
+        const exists = get().logs.some(
+          l => l.ruleKey === ruleKey && new Date(l.date).toDateString() === dayStr
+        )
+        if (exists) return
+        const entry = { id: `${ruleKey}-${dayStr}`, date: dateISO, ruleKey, label, delta, note: '' }
+        set(state => ({
+          bubbles: state.bubbles + delta,
+          logs: [entry, ...state.logs]
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, 500),
+        }))
+      },
+
+      // ── Sleep log ──────────────────────────────────────────────────
+      logSleep: (hoursSlept) => {
+        const state = get()
+        const goal  = state.settings.sleepGoalHours ?? 7
+        const diff  = hoursSlept - goal
+        let delta
+        if (diff >= 0) {
+          delta = Math.min(30, Math.round(diff * 10) + 5)
+        } else {
+          delta = Math.max(-30, Math.round(diff * 10))
+        }
+        const label = `😴 Slept ${hoursSlept}h (goal ${goal}h)`
+        get().addBubbles('SLEEP_LOG', label, delta)
+        const entry = { id: `sleep_${Date.now()}`, date: new Date().toISOString(), hoursSlept, goal, delta }
+        set(state => ({ sleepLogs: [entry, ...state.sleepLogs].slice(0, 365) }))
       },
 
       // ── Weight log ─────────────────────────────────────────────────
@@ -179,10 +259,14 @@ export const useStore = create(
         set(state => ({
           bubbles:           data.bubbles           ?? state.bubbles,
           logs:              data.logs              ?? state.logs,
+          penaltyEpoch:      data.penaltyEpoch      ?? state.penaltyEpoch,
+          mandatoryActivities: data.mandatoryActivities ?? state.mandatoryActivities,
+          anchorState:         data.anchorState         ?? state.anchorState,
           weightLog:         data.weightLog         ?? state.weightLog,
           streaks:           data.streaks           ?? state.streaks,
           settings:          data.settings          ? { ...state.settings, ...data.settings } : state.settings,
           seenAlertIds:      data.seenAlertIds      ?? state.seenAlertIds,
+          sleepLogs:         data.sleepLogs         ?? state.sleepLogs,
           customActivities:  data.customActivities  ?? state.customActivities,
           removedActivities: data.removedActivities ?? state.removedActivities,
           customHabits:      data.customHabits      ?? state.customHabits,
@@ -226,7 +310,6 @@ export const useStore = create(
           }
         }
         if (v < 3) {
-          // migrate single notif prefs → schedules array
           const s = state.settings ?? {}
           state = {
             ...state,
@@ -238,9 +321,15 @@ export const useStore = create(
             }],
           }
         }
+        if (v < 4) {
+          state = { ...state, sleepLogs: state.sleepLogs ?? [] }
+        }
+        if (v < 5) {
+          state = { ...state, anchorState: state.anchorState ?? null }
+        }
         return state
       },
-      version: 3,
+      version: 5,
     }
   )
 )
