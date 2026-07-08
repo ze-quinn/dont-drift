@@ -2,34 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { getLevelForBubbles, getProgressToNextLevel } from '../../constants/levels'
 import { useStore } from '../../store/useStore'
 import { soundBubbles } from '../../lib/feedback'
-
-// ── Odometer hook — counts from prev value to new value ──────────
-function useAnimatedNumber(value, duration = 700) {
-  const [displayed, setDisplayed] = useState(value)
-  const prevRef = useRef(value)
-  const rafRef  = useRef(null)
-
-  useEffect(() => {
-    const from = prevRef.current
-    const to   = value
-    if (from === to) return
-
-    const start = performance.now()
-    function tick(now) {
-      const t = Math.min((now - start) / duration, 1)
-      const eased = 1 - Math.pow(1 - t, 3)
-      setDisplayed(Math.round(from + (to - from) * eased))
-      if (t < 1) rafRef.current = requestAnimationFrame(tick)
-      else { prevRef.current = to; setDisplayed(to) }
-    }
-
-    cancelAnimationFrame(rafRef.current)
-    rafRef.current = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [value, duration])
-
-  return displayed
-}
+import { useSyncStatus } from '../../store/useSyncStatus'
+import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
 
 export default function BubbleBar({ onManualAlert }) {
   const bubbles = useStore(s => s.bubbles)
@@ -78,7 +52,7 @@ export default function BubbleBar({ onManualAlert }) {
   }
 
   return (
-    <div style={{ borderBottom: '1px solid var(--border-dim)', background: 'var(--bg-panel-alt)', flexShrink: 0 }}>
+    <div style={{ borderBottom: '1px solid var(--border-dim)', background: 'var(--bg-panel-alt)', flexShrink: 0, paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="flex items-center gap-3 lg:gap-5 px-4 lg:px-6 py-2.5">
 
         {/* Level badge — SVG hex so stroke is never clipped */}
@@ -192,8 +166,58 @@ export default function BubbleBar({ onManualAlert }) {
 
         <div className="w-px h-7 shrink-0" style={{ background: 'var(--border-dim)' }} />
 
+        <SyncPill />
+
         <OceanButton onClick={handleManualAlert} pulsing={pulsing} />
       </div>
+    </div>
+  )
+}
+
+// ── Sync status — dot on mobile, dot + label from sm: up ──────────────────
+const SYNC_META = {
+  idle:    { color: 'var(--text-3)',  label: 'LOCAL' },
+  syncing: { color: 'var(--brass)',   label: 'SYNCING\u2026', blink: true },
+  synced:  { color: 'var(--aqua)',    label: 'SYNCED' },
+  offline: { color: 'var(--negative)',label: 'OFFLINE' },
+  error:   { color: 'var(--negative)',label: 'RETRYING' },
+}
+
+function SyncPill() {
+  const status = useSyncStatus(s => s.status)
+  const [showTip, setShowTip] = useState(false)
+  const meta = SYNC_META[status] ?? SYNC_META.idle
+  if (status === 'idle') return null // logged out / nothing synced yet
+
+  function tapDot() {
+    setShowTip(true)
+    setTimeout(() => setShowTip(false), 2000)
+  }
+
+  return (
+    <div className="shrink-0" style={{ position: 'relative' }} onClick={tapDot} title={meta.label.toLowerCase()}>
+      <div
+        className="flex items-center sm:gap-1.5 sm:px-2.5 sm:py-1"
+        style={{ cursor: 'default', borderRadius: 20 }}
+      >
+        <span style={{
+          width: 7, height: 7, borderRadius: '50%',
+          background: meta.color, flexShrink: 0,
+          animation: meta.blink ? 'syncBlink 1.2s ease-in-out infinite' : 'none',
+        }} />
+        <span className="label-xs hidden sm:inline" style={{ color: 'var(--text-2)' }}>{meta.label}</span>
+      </div>
+      {showTip && (
+        <div className="sm:hidden" style={{
+          position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+          background: 'var(--bg-panel)', border: '1px solid var(--border)',
+          borderRadius: 2, padding: '5px 10px', whiteSpace: 'nowrap',
+          fontSize: '0.65rem', letterSpacing: '0.1em', color: 'var(--text-2)',
+          zIndex: 50, pointerEvents: 'none',
+        }}>
+          {meta.label}
+        </div>
+      )}
     </div>
   )
 }

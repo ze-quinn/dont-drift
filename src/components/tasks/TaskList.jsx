@@ -2,6 +2,7 @@ import { ACTIVITIES, isScheduledDay } from '../../constants/activities'
 import { useStore } from '../../store/useStore'
 import { BUBBLE_RULES } from '../../constants/bubbles'
 import { useNavigate } from 'react-router-dom'
+import SeaAnimalIllustration from '../SeaAnimalIllustration'
 
 export default function TaskList() {
   const isLoggedToday = useStore(s => s.isLoggedToday)
@@ -50,6 +51,15 @@ export default function TaskList() {
           + Log
         </button>
       </div>
+
+      {scheduled.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '20px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10, opacity: 0.3 }}>
+            <SeaAnimalIllustration animal="Manta Ray" size={56} color="var(--aqua)" opacity={1} />
+          </div>
+          <div className="label-xs">No scheduled tasks today — calm waters</div>
+        </div>
+      )}
 
       <div>
         {scheduled.map((activity) => {

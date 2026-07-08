@@ -4,6 +4,8 @@ import { MANDATORY_DEFAULTS } from '../constants/mandatory'
 
 const defaultSettings = {
   theme: 'dark',
+  soundEnabled: true,
+  hapticsEnabled: true,
   shoulderTargetHour: 19,
   height: '',
   weight: '',

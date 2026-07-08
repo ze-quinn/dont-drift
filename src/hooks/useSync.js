@@ -13,6 +13,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useStore } from '../store/useStore'
+import { useSyncStatus } from '../store/useSyncStatus'
 
 const SYNC_KEYS = ['bubbles', 'logs', 'weightLog', 'streaks', 'settings', 'cheatAllowances', 'seenAlertIds', 'penaltyEpoch', 'mandatoryActivities', 'anchorState']
 const DEBOUNCE_MS = 2000
@@ -50,7 +51,10 @@ async function flushPending() {
     data:       pending.payload,
     updated_at: new Date().toISOString(),
   })
-  if (!error) clearPending()
+  if (!error) {
+    clearPending()
+    useSyncStatus.getState().markSynced()
+  }
 }
 
 export function useSync() {
@@ -90,13 +94,15 @@ export function useSync() {
       const cloudNewer = !lastLocal || !data.updated_at || new Date(data.updated_at) >= new Date(lastLocal)
       if (cloudNewer) {
         hydrateFromCloud(data.data)
+        useSyncStatus.getState().markSynced()
       } else {
         const localState = pickSyncKeys(useStore.getState())
-        await supabase.from('user_data').upsert({
+        const { error: upErr } = await supabase.from('user_data').upsert({
           user_id:    userId,
           data:       localState,
           updated_at: new Date().toISOString(),
         })
+        if (!upErr) useSyncStatus.getState().markSynced()
       }
     } else {
       // First login — migrate local state up to cloud
@@ -132,11 +138,14 @@ export function useSync() {
   // ── Flush any queued offline write on reconnect / tab return ─────────────
   useEffect(() => {
     const tryFlush = () => { if (navigator.onLine) flushPending() }
+    const onOffline = () => useSyncStatus.getState().setStatus('offline')
     window.addEventListener('online', tryFlush)
+    window.addEventListener('offline', onOffline)
     document.addEventListener('visibilitychange', tryFlush)
     tryFlush() // attempt once on mount (e.g. data queued from a previous launch)
     return () => {
       window.removeEventListener('online', tryFlush)
+      window.removeEventListener('offline', onOffline)
       document.removeEventListener('visibilitychange', tryFlush)
     }
   }, [])
@@ -150,7 +159,12 @@ export function useSync() {
       if (!userIdRef.current) return
       const payload = pickSyncKeys(useStore.getState())
       markLocalWrite()
-      if (!navigator.onLine) { stashPending(userIdRef.current, payload); return }
+      if (!navigator.onLine) {
+        stashPending(userIdRef.current, payload)
+        useSyncStatus.getState().setStatus('offline')
+        return
+      }
+      useSyncStatus.getState().setStatus('syncing')
       const { error } = await supabase.from('user_data').upsert({
         user_id:    userIdRef.current,
         data:       payload,
@@ -159,8 +173,10 @@ export function useSync() {
       if (error) {
         console.error('Supabase sync write error:', error)
         stashPending(userIdRef.current, payload)
+        useSyncStatus.getState().setStatus(navigator.onLine ? 'error' : 'offline')
       } else {
         clearPending()
+        useSyncStatus.getState().markSynced()
       }
     }, DEBOUNCE_MS)
 

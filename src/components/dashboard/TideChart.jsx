@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { dailyTotalsMap } from '../../lib/stats'
 
@@ -16,11 +17,13 @@ function weekDates() {
 
 // Net bubbles per day across the current week, drawn as a tide line above/below
 // a zero "surface" line. Dipping below the line = a drifting day.
+// Tap / hover a day to see that day's logged activities.
 export default function TideChart() {
   const logs = useStore(s => s.logs)
   const totals = dailyTotalsMap(logs)
   const dates = weekDates()
   const todayStr = new Date().toDateString()
+  const [selected, setSelected] = useState(null) // day index or null
 
   const values = dates.map(d => totals[d.toDateString()] ?? 0)
   const net = values.reduce((a, b) => a + b, 0)
@@ -33,6 +36,10 @@ export default function TideChart() {
 
   const linePts = values.map((v, i) => `${x(i)},${y(v)}`).join(' ')
   const areaPts = `${x(0)},${mid} ${linePts} ${x(6)},${mid}`
+
+  const selLogs = selected == null ? [] : logs.filter(
+    l => new Date(l.date).toDateString() === dates[selected].toDateString()
+  )
 
   return (
     <div className="panel p-4">
@@ -58,6 +65,12 @@ export default function TideChart() {
         <polygon points={areaPts} fill="url(#tideFill)" />
         <polyline points={linePts} fill="none" stroke="var(--aqua)" strokeWidth="2" strokeLinejoin="round" />
 
+        {/* Selected-day marker line */}
+        {selected != null && (
+          <line x1={x(selected)} y1={PAD_Y} x2={x(selected)} y2={H - PAD_Y}
+            stroke="var(--brass)" strokeWidth="1" strokeDasharray="2 3" opacity="0.6" />
+        )}
+
         {/* Day markers */}
         {values.map((v, i) => {
           const isToday = dates[i].toDateString() === todayStr
@@ -68,15 +81,60 @@ export default function TideChart() {
               stroke={isToday ? 'var(--brass)' : 'none'} strokeWidth="2" />
           )
         })}
+
+        {/* Invisible tap targets — full-height column per day */}
+        {values.map((_, i) => (
+          <rect key={`hit-${i}`}
+            x={x(i) - (W - PAD_X * 2) / 12} y="0"
+            width={(W - PAD_X * 2) / 6} height={H}
+            fill="transparent" style={{ cursor: 'pointer' }}
+            onClick={() => setSelected(s => (s === i ? null : i))}
+          />
+        ))}
       </svg>
 
       <div className="flex justify-between px-1 mt-1">
         {dates.map((d, i) => (
-          <span key={i} className="label-xs" style={{ color: d.toDateString() === todayStr ? 'var(--aqua)' : 'var(--text-3)' }}>
+          <span key={i} className="label-xs"
+            style={{
+              color: selected === i ? 'var(--brass)'
+                : d.toDateString() === todayStr ? 'var(--aqua)' : 'var(--text-3)',
+              cursor: 'pointer',
+            }}
+            onClick={() => setSelected(s => (s === i ? null : i))}
+          >
             {DAYS_SHORT[d.getDay()]}
           </span>
         ))}
       </div>
+
+      {/* Day detail — activities logged on the selected day */}
+      {selected != null && (
+        <div className="mt-3 pt-3 animate-fade-in" style={{ borderTop: '1px solid var(--border-dim)' }}>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="label-xs">
+              {dates[selected].toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}
+            </span>
+            <span className="font-mono text-xs font-bold"
+              style={{ color: values[selected] >= 0 ? 'var(--brass)' : 'var(--negative)' }}>
+              {values[selected] > 0 ? '+' : ''}{values[selected]}
+            </span>
+          </div>
+          {selLogs.length === 0 ? (
+            <div className="label-xs" style={{ color: 'var(--text-3)' }}>Nothing logged this day</div>
+          ) : (
+            selLogs.map(log => (
+              <div key={log.id} className="flex items-center justify-between py-1">
+                <span className="text-xs" style={{ color: 'var(--text-2)' }}>{log.label}</span>
+                <span className="font-mono text-xs font-bold"
+                  style={{ color: log.delta >= 0 ? 'var(--brass)' : 'var(--negative)' }}>
+                  {log.delta > 0 ? '+' : ''}{log.delta}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   )
 }

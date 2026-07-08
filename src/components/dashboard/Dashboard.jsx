@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import BubbleGauge from './BubbleGauge'
 import WeekView from './WeekView'
 import TaskList from '../tasks/TaskList'
@@ -10,14 +10,17 @@ import PersonalBestBanner from '../celebrations/PersonalBestBanner'
 import RescueCard from '../celebrations/RescueCard'
 import AnchorPanel from './AnchorPanel'
 import { useStore } from '../../store/useStore'
-import { getLevelForBubbles } from '../../constants/levels'
+import { getLevelForBubbles, getProgressToNextLevel, LEVELS } from '../../constants/levels'
+import RankSheet from './RankSheet'
 import { useAlertTrigger } from '../../context/AlertContext'
+import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
 
 const IDLE_MS = 3 * 60 * 1000 // 3 minutes idle on dashboard
 
 export default function Dashboard() {
   const bubbles = useStore(s => s.bubbles)
   const logs = useStore(s => s.logs)
+  const [rankSheetOpen, setRankSheetOpen] = useState(false)
   const { showAlert } = useAlertTrigger()
   const idleTimerRef = useRef(null)
 
@@ -49,6 +52,8 @@ export default function Dashboard() {
   const todaysTotal = recentLogs
     .filter(l => new Date(l.date).toDateString() === todayStr)
     .reduce((s, l) => s + l.delta, 0)
+  const { next } = getProgressToNextLevel(bubbles)
+  const displayedTotal = useAnimatedNumber(todaysTotal)
 
   return (
     <div className="p-6 max-w-4xl mx-auto animate-fade-in">
@@ -85,12 +90,29 @@ export default function Dashboard() {
 
           {/* Gauge panel */}
           <div className="panel p-5 flex flex-col items-center relative overflow-hidden">
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 0 }}>
-              <SeaAnimalIllustration animal={level.name} size={160} color="var(--aqua)" opacity="var(--watermark-opacity)" />
+            <div
+              className="absolute inset-0 flex items-center justify-center"
+              style={{ zIndex: 0, cursor: 'pointer' }}
+              onClick={() => setRankSheetOpen(true)}
+              title="View all ranks"
+            >
+              <div className="watermark-drift">
+                <SeaAnimalIllustration animal={level.name} size={160} color="var(--aqua)" opacity="var(--watermark-opacity)" />
+              </div>
             </div>
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <BubbleGauge />
+            <div style={{ position: 'relative', zIndex: 1, pointerEvents: 'none' }}>
+              <div style={{ pointerEvents: 'auto' }}>
+                <BubbleGauge />
+              </div>
             </div>
+            {next && (
+              <div className="label-xs" style={{ position: 'relative', zIndex: 1, marginTop: 10, color: 'var(--text-3)' }}>
+                <span style={{ color: 'var(--brass)', fontFamily: 'DM Mono, monospace', fontWeight: 700 }}>
+                  {Math.max(0, next.min - bubbles).toLocaleString()}
+                </span>
+                {' '}bubbles to {next.name}
+              </div>
+            )}
           </div>
 
           {/* Streak strip */}
@@ -123,8 +145,8 @@ export default function Dashboard() {
               {recentLogs.length > 0 && (
                 <div className="label-xs" style={{ color: 'var(--text-3)' }}>
                   Today's total:{' '}
-                  <span style={{ color: todaysTotal >= 0 ? 'var(--brass)' : 'var(--negative)' }}>
-                    {todaysTotal > 0 ? '+' : ''}{todaysTotal}
+                  <span className="font-mono" style={{ color: todaysTotal >= 0 ? 'var(--brass)' : 'var(--negative)', fontVariantNumeric: 'tabular-nums' }}>
+                    {displayedTotal > 0 ? '+' : ''}{displayedTotal}
                   </span>
                 </div>
               )}
@@ -174,6 +196,15 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {rankSheetOpen && (
+        <RankSheet
+          currentLevel={level.level}
+          bubbles={bubbles}
+          levels={LEVELS}
+          onClose={() => setRankSheetOpen(false)}
+        />
+      )}
     </div>
   )
 }

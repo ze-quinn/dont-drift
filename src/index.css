@@ -373,6 +373,31 @@ html[data-theme="light"][data-time="night"] {
 .water-bg .layer-a { animation: waterDriftA 26s ease-in-out infinite; transform-origin: center; }
 .water-bg .layer-b { animation: waterDriftB 34s ease-in-out infinite; transform-origin: center; }
 
+/* ─── Sync status dot ─────────────────────────────────────────── */
+@keyframes syncBlink { 50% { opacity: 0.25; } }
+
+/* ─── Watermark drift — the rank animal bobs gently behind the gauge ── */
+@keyframes watermarkDrift {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg); }
+  33%  { transform: translate3d(4px, -6px, 0) rotate(0.6deg); }
+  66%  { transform: translate3d(-5px, 4px, 0) rotate(-0.5deg); }
+  100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+}
+.watermark-drift { animation: watermarkDrift 14s ease-in-out infinite; will-change: transform; }
+
+/* ─── Skeleton shimmer — brass-tinted loading placeholders ────── */
+@keyframes skeletonShimmer { 50% { opacity: 0.5; } }
+.skeleton {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-dim);
+  border-radius: 2px;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .water-bg .layer-a, .water-bg .layer-b { animation: none; }
+  .watermark-drift { animation: none; }
+  .skeleton { animation: none; opacity: 0.7; }
+  .animate-slide-in, .animate-slide-up, .animate-fade-in,
+  .animate-bubble-pop, .animate-page-in { animation-duration: 0.01ms; }
 }

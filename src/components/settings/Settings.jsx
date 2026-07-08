@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../../store/useStore'
+import { useSyncStatus } from '../../store/useSyncStatus'
 import { LEVELS } from '../../constants/levels'
 import SeaAnimalIllustration from '../SeaAnimalIllustration'
 import { usePushNotifications } from '../../hooks/usePushNotifications'
@@ -202,6 +203,61 @@ function NotifSchedules({ savePrefs, prefsSaved, pushError, unsubscribe }) {
   )
 }
 
+function SyncedLine() {
+  const status = useSyncStatus(s => s.status)
+  const lastSyncedAt = useSyncStatus(s => s.lastSyncedAt)
+  const ago = timeAgo(lastSyncedAt)
+  const text =
+    status === 'offline' ? 'Offline — changes saved locally' :
+    status === 'error'   ? 'Sync failed — will retry' :
+    status === 'syncing' ? 'Syncing…' :
+    ago ? `Last synced ${ago} ✓` : 'Synced across all devices'
+  return (
+    <div className="label-xs" style={{ marginTop: 3, color: status === 'offline' || status === 'error' ? 'var(--negative)' : undefined }}>
+      {text}
+    </div>
+  )
+}
+
+// Relative "x min ago" formatter for the sync timestamp
+function timeAgo(iso) {
+  if (!iso) return null
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
+  if (mins < 1) return 'just now'
+  if (mins === 1) return '1 min ago'
+  if (mins < 60) return `${mins} min ago`
+  const hrs = Math.floor(mins / 60)
+  return hrs === 1 ? '1 hr ago' : `${hrs} hrs ago`
+}
+
+function Toggle({ label, sublabel, value, onChange }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0' }}>
+      <div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-1)', fontFamily: 'DM Sans, sans-serif' }}>{label}</div>
+        {sublabel && <div className="label-xs" style={{ marginTop: 2 }}>{sublabel}</div>}
+      </div>
+      <button
+        onClick={() => onChange(!value)}
+        role="switch" aria-checked={value} aria-label={label}
+        style={{
+          width: 40, height: 22, borderRadius: 11, flexShrink: 0, cursor: 'pointer',
+          border: `1px solid ${value ? 'var(--brass)' : 'var(--border-dim)'}`,
+          background: value ? 'rgba(201,168,76,0.25)' : 'var(--bg-input)',
+          position: 'relative', transition: 'background 0.2s, border-color 0.2s', padding: 0,
+        }}
+      >
+        <span style={{
+          position: 'absolute', top: 2, left: value ? 20 : 2,
+          width: 16, height: 16, borderRadius: '50%',
+          background: value ? 'var(--brass)' : 'var(--text-3)',
+          transition: 'left 0.2s, background 0.2s',
+        }} />
+      </button>
+    </div>
+  )
+}
+
 export default function Settings() {
   const { settings, updateSettings } = useStore()
   const bubbles = useStore(s => s.bubbles)
@@ -260,6 +316,24 @@ export default function Settings() {
             {settings.sleepGoalHours ?? 7}<span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-3)', marginLeft: 4 }}>hrs</span>
           </div>
         )}
+      </div>
+
+      {/* Sound + haptics */}
+      <div className="panel" style={{ padding: 20, marginBottom: 12 }}>
+        <div className="label-xs" style={{ color: 'var(--brass)', marginBottom: 8 }}>Sound &amp; haptics</div>
+        <Toggle
+          label="Bubble sounds"
+          sublabel="Pops, chimes and gains"
+          value={settings.soundEnabled ?? true}
+          onChange={v => updateSettings({ soundEnabled: v })}
+        />
+        <div style={{ height: 1, background: 'var(--border-dim)' }} />
+        <Toggle
+          label="Haptics"
+          sublabel="Vibration on log and level-up (Android)"
+          value={settings.hapticsEnabled ?? true}
+          onChange={v => updateSettings({ hapticsEnabled: v })}
+        />
       </div>
 
       {/* Mandatory activities */}
@@ -381,7 +455,7 @@ export default function Settings() {
             <div style={{ fontSize: '0.8rem', color: 'var(--text-2)', fontFamily: 'DM Sans, sans-serif' }}>
               {userEmail || '—'}
             </div>
-            <div className="label-xs" style={{ marginTop: 3 }}>Synced across all devices</div>
+            <SyncedLine />
           </div>
           <button
             onClick={() => supabase.auth.signOut()}

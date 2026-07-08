@@ -31,7 +31,29 @@ export function usePushNotifications() {
     if (Notification.permission === 'granted') {
       navigator.serviceWorker.ready
         .then(reg => reg.pushManager.getSubscription())
-        .then(sub => { if (sub) setStatus('subscribed') })
+        .then(async sub => {
+          if (!sub) return
+          setStatus('subscribed')
+          // Re-validate: push endpoints can rotate/expire silently (esp. after
+          // SW updates). Re-post the current subscription so the server always
+          // has a live endpoint. Throttled to once a day.
+          try {
+            const KEY = 'dont-drift-push-revalidated'
+            const last = Number(localStorage.getItem(KEY) || 0)
+            if (Date.now() - last < 24 * 60 * 60 * 1000) return
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session) return
+            const res = await fetch('/api/subscribe', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify(sub),
+            })
+            if (res.ok) localStorage.setItem(KEY, String(Date.now()))
+          } catch { /* best-effort */ }
+        })
     }
   }, [])
 

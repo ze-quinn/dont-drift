@@ -32,10 +32,21 @@ function motionOK() {
   } catch (_) { return true }
 }
 
+// Settings toggles — read from the persisted store snapshot (localStorage)
+// instead of importing the store, which would create an import cycle.
+function readSetting(key, fallback = true) {
+  try {
+    const raw = JSON.parse(localStorage.getItem('dont-drift-store'))
+    return raw?.state?.settings?.[key] ?? fallback
+  } catch (_) { return fallback }
+}
+function soundOK()  { return motionOK() && readSetting('soundEnabled') }
+function hapticOK() { return readSetting('hapticsEnabled') }
+
 // ── Core synth helpers ────────────────────────────────────────────────────────
 
 function playTone({ freq = 440, type = 'sine', gain = 0.18, duration = 0.12, attack = 0.005 } = {}) {
-  if (!motionOK()) return
+  if (!soundOK()) return
   try {
     const c = getCtx()
     const osc = c.createOscillator()
@@ -62,7 +73,7 @@ function playChord(notes, { type = 'sine', gain = 0.14, duration = 0.18, stagger
 
 // Single bubble pop — tiny pitched blip, freq determines pitch
 export function soundBubblePop(freq = 600, gain = 0.09) {
-  if (!motionOK()) return
+  if (!soundOK()) return
   try {
     const c = getCtx()
     const osc = c.createOscillator()
@@ -95,7 +106,7 @@ export function soundGain() {
 
 // Penalty / bubble lost — short descending tone
 export function soundLoss() {
-  if (!motionOK()) return
+  if (!soundOK()) return
   try {
     const c = getCtx()
     const osc = c.createOscillator()
@@ -133,6 +144,7 @@ export function soundSave() {
 // ── Haptics ───────────────────────────────────────────────────────────────────
 
 function vibrate(pattern) {
+  if (!hapticOK()) return
   try { navigator.vibrate?.(pattern) } catch (_) {}
 }
 
