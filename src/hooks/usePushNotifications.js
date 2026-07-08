@@ -15,18 +15,19 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 export function usePushNotifications() {
-  const [status, setStatus]     = useState('idle') // idle | requesting | subscribed | denied | unsupported
+  // Permission / support state is known synchronously — derive the initial
+  // value instead of setting it in an effect (avoids a cascading render).
+  const [status, setStatus] = useState(() => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return 'unsupported'
+    if (Notification.permission === 'denied') return 'denied'
+    return 'idle' // idle | requesting | subscribed | denied | unsupported
+  })
   const [error, setError]       = useState(null)
   const [prefsSaved, setPrefsSaved] = useState(false) // flash state for save button
 
-  // On mount, detect current permission + subscription state
+  // On mount, detect an existing subscription (async — needs the SW)
   useEffect(() => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      setStatus('unsupported'); return
-    }
-    if (Notification.permission === 'denied') {
-      setStatus('denied'); return
-    }
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
     if (Notification.permission === 'granted') {
       navigator.serviceWorker.ready
         .then(reg => reg.pushManager.getSubscription())

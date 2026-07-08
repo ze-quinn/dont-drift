@@ -101,6 +101,7 @@ export default function AuthGate({ children }) {
   useEffect(() => {
     // If Supabase isn't configured, skip auth entirely
     if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot config guard, runs once on mount
       setSession(null)
       console.warn('Supabase env vars missing — auth disabled')
       return

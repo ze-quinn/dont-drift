@@ -34,7 +34,7 @@ function motionOK() {
 
 // ── Core synth helpers ────────────────────────────────────────────────────────
 
-function playTone({ freq = 440, type = 'sine', gain = 0.18, duration = 0.12, attack = 0.005, decay = 0.08 } = {}) {
+function playTone({ freq = 440, type = 'sine', gain = 0.18, duration = 0.12, attack = 0.005 } = {}) {
   if (!motionOK()) return
   try {
     const c = getCtx()

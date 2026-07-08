@@ -46,15 +46,18 @@ export function useAlerts() {
     setCurrentAlert(null)
   }, [])
 
-  // Schedule the next ambient alert (8–12 min)
+  // Schedule the next ambient alert (8–12 min). Self-reschedules via a ref
+  // so the recursive call always sees the latest closure.
+  const scheduleNextRef = useRef(null)
   const scheduleNext = useCallback(() => {
     clearTimeout(ambientTimerRef.current)
     const delay = (8 + Math.random() * 4) * 60 * 1000  // 8–12 min
     ambientTimerRef.current = setTimeout(() => {
       showAlert('general')
-      scheduleNext()
+      scheduleNextRef.current?.()
     }, delay)
   }, [showAlert])
+  useEffect(() => { scheduleNextRef.current = scheduleNext }, [scheduleNext])
 
   // On first mount: show after 4 s, then begin ambient cycle
   useEffect(() => {

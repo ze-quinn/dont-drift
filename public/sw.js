@@ -60,7 +60,7 @@ self.addEventListener('fetch', event => {
 
 // ── Push notification handler ──────────────────────────────────────────────
 self.addEventListener('push', event => {
-  let data = {}
+  let data
   try {
     data = event.data ? event.data.json() : {}
   } catch {

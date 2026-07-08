@@ -3,7 +3,7 @@ import { useStore, DEFAULT_CHEAT_CONFIG } from '../../store/useStore'
 import { isWeekend } from '../../constants/activities'
 import { BUBBLE_RULES } from '../../constants/bubbles'
 import { useAlertTrigger } from '../../context/AlertContext'
-import { feedbackHabit, feedbackLoss } from '../../lib/feedback'
+import { feedbackHabit, feedbackLoss, feedbackGain } from '../../lib/feedback'
 
 // ── Built-in habits ────────────────────────────────────────────────────────────
 const BUILTIN_HABITS = [

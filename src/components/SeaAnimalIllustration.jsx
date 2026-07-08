@@ -328,7 +328,6 @@ function offsetSpine(pts, wid) {
   }
   return L.concat(R.reverse())
 }
-function ellipse(cx, cy, rx, ry) { const p = []; for (let i = 0; i < 34; i++) { const t = i / 34 * Math.PI * 2; p.push([cx + rx * Math.cos(t), cy + ry * Math.sin(t)]) } return p }
 function egg(cx, cy, rx, ry, tp) { const p = []; for (let i = 0; i < 40; i++) { const t = i / 40 * Math.PI * 2, ct = Math.cos(t), st = Math.sin(t); p.push([cx + rx * (1 - tp * st) * ct, cy + ry * st]) } return p }
 function spikeBody(cx, cy, rx, ry, N, o, inn) {
   const p = []
@@ -406,14 +405,24 @@ function buildFitted(ft, g, r, boost) {
   return { vbw, vbh, wFactor: wf, hFactor: hf, dots: halftone(ft.polys, g, r) }
 }
 
-const HALFTONE = {
-  Seahorse:    buildFitted(fit(_SH, 8), 4,   2.0, 1.28),
-  Pufferfish:  build(_PF, 6,   2.9, 1.05),
-  Barracuda:   build(_BA, 4.5, 2.2, 1.35),
-  Octopus:     buildFitted(_OC, 5.5, 2.6, 1.0),
-  'Manta Ray': build(_MR, 6,   3.0, 1.0),
-  Orca:        buildFitted(_OR, 5,   2.5, 1.0),
-  'Blue Whale':build(_WH, 6,   2.9, 1.35),
+// Recipes are thunks — dots are only generated for the animal actually
+// rendered (first access), then memoised. Avoids ~5k point-in-polygon dot
+// computations for all 7 animals at module load.
+const HALFTONE_RECIPES = {
+  Seahorse:    () => buildFitted(fit(_SH, 8), 4,   2.0, 1.28),
+  Pufferfish:  () => build(_PF, 6,   2.9, 1.05),
+  Barracuda:   () => build(_BA, 4.5, 2.2, 1.35),
+  Octopus:     () => buildFitted(_OC, 5.5, 2.6, 1.0),
+  'Manta Ray': () => build(_MR, 6,   3.0, 1.0),
+  Orca:        () => buildFitted(_OR, 5,   2.5, 1.0),
+  'Blue Whale':() => build(_WH, 6,   2.9, 1.35),
+}
+const _halftoneCache = {}
+function getHalftone(animal) {
+  if (!(animal in _halftoneCache)) {
+    _halftoneCache[animal] = HALFTONE_RECIPES[animal] ? HALFTONE_RECIPES[animal]() : null
+  }
+  return _halftoneCache[animal]
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -439,7 +448,7 @@ export default function SeaAnimalIllustration({
     )
   }
 
-  const cfg = HALFTONE[animal]
+  const cfg = getHalftone(animal)
   if (!cfg) return null
   const W = Math.round(size * cfg.wFactor)
   const H = Math.round(size * cfg.hFactor)
@@ -456,5 +465,6 @@ export default function SeaAnimalIllustration({
   )
 }
 
-export { LINEART_COMPONENTS, HALFTONE }
+// eslint-disable-next-line react-refresh/only-export-components -- intentional shared exports
+export { LINEART_COMPONENTS, getHalftone }
 export const ANIMAL_COMPONENTS = LINEART_COMPONENTS

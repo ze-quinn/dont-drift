@@ -17,5 +17,16 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // `catch (_) {}` is the intentional best-effort pattern for
+      // localStorage / audio calls throughout this codebase
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', caughtErrors: 'none', varsIgnorePattern: '^_' }],
+      'no-empty': ['error', { allowEmptyCatch: true }],
+    },
+  },
+  {
+    // Vercel serverless functions run in Node
+    files: ['api/**/*.js'],
+    languageOptions: { globals: globals.node },
   },
 ])

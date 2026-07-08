@@ -52,7 +52,7 @@ export default function TaskList() {
       </div>
 
       <div>
-        {scheduled.map((activity, i) => {
+        {scheduled.map((activity) => {
           const done = doneToday[activity.id]
           const penaltyDelta = activity.id === 'run'
             ? BUBBLE_RULES.SKIPPED_RUN.delta

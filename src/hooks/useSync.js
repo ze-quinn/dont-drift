@@ -2,8 +2,9 @@
 // Keeps Zustand state in sync with Supabase.
 //
 // On login:
-//   - Fetches cloud data for this user
-//   - If cloud row exists → hydrate store from cloud (cloud wins, it's the source of truth)
+//   - Flushes any queued offline write first, then fetches cloud data
+//   - Newest wins: hydrate from cloud only if the cloud row is newer than the
+//     last local write on this device; otherwise push local state up
 //   - If no cloud row → migrate local localStorage data up (first login from a device with existing data)
 //
 // While logged in:
@@ -16,6 +17,17 @@ import { useStore } from '../store/useStore'
 const SYNC_KEYS = ['bubbles', 'logs', 'weightLog', 'streaks', 'settings', 'cheatAllowances', 'seenAlertIds', 'penaltyEpoch', 'mandatoryActivities', 'anchorState']
 const DEBOUNCE_MS = 2000
 const PENDING_KEY = 'dont-drift-pending-sync'
+const LAST_WRITE_KEY = 'dont-drift-last-local-write'
+
+// Timestamp of the last state change made on THIS device (synced or not).
+// Compared against the cloud row's updated_at on login so a stale cloud row
+// can't clobber newer offline work.
+function markLocalWrite() {
+  try { localStorage.setItem(LAST_WRITE_KEY, new Date().toISOString()) } catch { /* quota */ }
+}
+function getLastLocalWrite() {
+  try { return localStorage.getItem(LAST_WRITE_KEY) } catch { return null }
+}
 
 function pickSyncKeys(state) {
   return Object.fromEntries(SYNC_KEYS.map(k => [k, state[k]]))
@@ -53,9 +65,13 @@ export function useSync() {
     userIdRef.current   = userId
     initializedRef.current = false
 
+    // Push any queued offline write up BEFORE fetching, so it isn't lost
+    // to the hydrate below.
+    await flushPending()
+
     const { data, error } = await supabase
       .from('user_data')
-      .select('data')
+      .select('data, updated_at')
       .eq('user_id', userId)
       .single()
 
@@ -67,8 +83,21 @@ export function useSync() {
     }
 
     if (data?.data) {
-      // Cloud row exists — hydrate store from it
-      hydrateFromCloud(data.data)
+      // Cloud row exists — newest wins. Only hydrate if the cloud row is
+      // newer than the last write made on this device; otherwise this
+      // device has fresher (e.g. offline) state, so push it up instead.
+      const lastLocal = getLastLocalWrite()
+      const cloudNewer = !lastLocal || !data.updated_at || new Date(data.updated_at) >= new Date(lastLocal)
+      if (cloudNewer) {
+        hydrateFromCloud(data.data)
+      } else {
+        const localState = pickSyncKeys(useStore.getState())
+        await supabase.from('user_data').upsert({
+          user_id:    userId,
+          data:       localState,
+          updated_at: new Date().toISOString(),
+        })
+      }
     } else {
       // First login — migrate local state up to cloud
       const localState = pickSyncKeys(useStore.getState())
@@ -120,6 +149,7 @@ export function useSync() {
     timerRef.current = setTimeout(async () => {
       if (!userIdRef.current) return
       const payload = pickSyncKeys(useStore.getState())
+      markLocalWrite()
       if (!navigator.onLine) { stashPending(userIdRef.current, payload); return }
       const { error } = await supabase.from('user_data').upsert({
         user_id:    userIdRef.current,
@@ -136,7 +166,6 @@ export function useSync() {
 
     return () => clearTimeout(timerRef.current)
   // Subscribe to the keys we care about
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     store.bubbles,
     store.logs,

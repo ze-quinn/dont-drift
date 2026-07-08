@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../../store/useStore'
 
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const DAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
 function getWeekDates() {

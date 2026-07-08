@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useStore } from '../../store/useStore'
 import { LEVELS } from '../../constants/levels'
 import SeaAnimalIllustration from '../SeaAnimalIllustration'

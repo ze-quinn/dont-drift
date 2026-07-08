@@ -3,7 +3,7 @@ import { useStore } from '../../store/useStore'
 import { useHealth } from '../../hooks/useHealth'
 import WeightChart from './WeightChart'
 import WidgetGallery from '../widgets/WidgetGallery'
-import { feedbackSave, feedbackGain } from '../../lib/feedback'
+import { feedbackSave } from '../../lib/feedback'
 
 function StatCard({ label, value, unit, sub }) {
   return (

@@ -173,7 +173,7 @@ export default function AnchorPanel() {
   const [showDropConfirm,    setShowDropConfirm]    = useState(false)
   const [showResumeConfirm,  setShowResumeConfirm]  = useState(false)
   const [showCostFloat,      setShowCostFloat]      = useState(false)
-  const [dropping,           setDropping]           = useState(false)
+  const [,                   setDropping]           = useState(false)
   const [rising,             setRising]             = useState(false)
 
   function handleDrop() {

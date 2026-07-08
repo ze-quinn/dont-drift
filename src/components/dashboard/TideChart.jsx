@@ -1,5 +1,5 @@
 import { useStore } from '../../store/useStore'
-import { dailyTotalsMap, dayKey } from '../../lib/stats'
+import { dailyTotalsMap } from '../../lib/stats'
 
 const DAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 const W = 300, H = 110, PAD_X = 16, PAD_Y = 14

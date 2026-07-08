@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import NavRail from './NavRail'
 import BubbleBar from './BubbleBar'
@@ -10,7 +10,8 @@ import { useSync } from '../../hooks/useSync'
 import { useMissedPenalties } from '../../hooks/useMissedPenalties'
 import { soundBubbles } from '../../lib/feedback'
 import WaterBackground from './WaterBackground'
-import LevelUpCelebration from '../celebrations/LevelUpCelebration'
+// Lazy — pulls SeaAnimalIllustration (heavy) out of the entry chunk
+const LevelUpCelebration = lazy(() => import('../celebrations/LevelUpCelebration'))
 
 const OPEN_BUBBLES = [
   { r: 5,   delay: 80  },
@@ -79,7 +80,9 @@ export default function Shell() {
           <AlertToast alert={currentAlert} onDismiss={dismissAlert} />
         )}
 
-        <LevelUpCelebration />
+        <Suspense fallback={null}>
+          <LevelUpCelebration />
+        </Suspense>
       </div>
     </AlertContext.Provider>
   )

@@ -21,9 +21,14 @@ export default function Dashboard() {
   const { showAlert } = useAlertTrigger()
   const idleTimerRef = useRef(null)
 
-  // Idle trigger — show a sea animal after 3 min of no pointer activity
+  // Idle trigger — show a sea animal after 3 min of no pointer activity.
+  // Reset is throttled to 1 s so pointermove doesn't churn timers per pixel.
   useEffect(() => {
+    let lastReset = 0
     function resetIdle() {
+      const now = Date.now()
+      if (now - lastReset < 1000) return
+      lastReset = now
       clearTimeout(idleTimerRef.current)
       idleTimerRef.current = setTimeout(() => showAlert('general'), IDLE_MS)
     }
@@ -40,6 +45,10 @@ export default function Dashboard() {
   }, [showAlert])
   const level = getLevelForBubbles(bubbles)
   const recentLogs = logs.slice(0, 6)
+  const todayStr = new Date().toDateString()
+  const todaysTotal = recentLogs
+    .filter(l => new Date(l.date).toDateString() === todayStr)
+    .reduce((s, l) => s + l.delta, 0)
 
   return (
     <div className="p-6 max-w-4xl mx-auto animate-fade-in">
@@ -114,9 +123,8 @@ export default function Dashboard() {
               {recentLogs.length > 0 && (
                 <div className="label-xs" style={{ color: 'var(--text-3)' }}>
                   Today's total:{' '}
-                  <span style={{ color: recentLogs.filter(l => new Date(l.date).toDateString() === new Date().toDateString()).reduce((s,l)=>s+l.delta,0) >= 0 ? 'var(--brass)' : 'var(--negative)' }}>
-                    {recentLogs.filter(l => new Date(l.date).toDateString() === new Date().toDateString()).reduce((s,l)=>s+l.delta,0) > 0 ? '+' : ''}
-                    {recentLogs.filter(l => new Date(l.date).toDateString() === new Date().toDateString()).reduce((s,l)=>s+l.delta,0)}
+                  <span style={{ color: todaysTotal >= 0 ? 'var(--brass)' : 'var(--negative)' }}>
+                    {todaysTotal > 0 ? '+' : ''}{todaysTotal}
                   </span>
                 </div>
               )}
