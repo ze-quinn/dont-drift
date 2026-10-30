@@ -91,10 +91,14 @@ export default function MandatoryActivities() {
   const [picked, setPicked] = useState(available[0] ?? '')
 
   function toggleDay(m, dayIdx) {
-    const days = m.scheduledDays.includes(dayIdx)
+    const removing = m.scheduledDays.includes(dayIdx)
+    const days = removing
       ? m.scheduledDays.filter(d => d !== dayIdx)
       : [...m.scheduledDays, dayIdx].sort((a, b) => a - b)
-    updateMandatoryActivity(m.id, { scheduledDays: days })
+    // Newly scheduled day → no back-charging for earlier occurrences of that weekday.
+    updateMandatoryActivity(m.id, removing
+      ? { scheduledDays: days }
+      : { scheduledDays: days, startDate: new Date().toDateString() })
   }
 
   function addPicked() {
@@ -105,6 +109,7 @@ export default function MandatoryActivities() {
       label: meta.label, icon: meta.icon,
       scheduledDays: [1, 2, 3, 4, 5, 6], penalty: 20,
       missedKey: missedKeyFor(picked), anyWorkout: false,
+      startDate: new Date().toDateString(),
     })
     const remaining = available.filter(k => k !== picked)
     setPicked(remaining[0] ?? '')

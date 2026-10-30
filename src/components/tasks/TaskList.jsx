@@ -1,29 +1,32 @@
-import { ACTIVITIES, isScheduledDay } from '../../constants/activities'
+import { ACTIVITIES } from '../../constants/activities'
+import { ACTIVITY_META, ACTIVITY_DONE_KEYS, doneKeysFor } from '../../constants/mandatory'
 import { useStore } from '../../store/useStore'
-import { BUBBLE_RULES } from '../../constants/bubbles'
 import { useNavigate } from 'react-router-dom'
 import SeaAnimalIllustration from '../SeaAnimalIllustration'
 
 export default function TaskList() {
   const isLoggedToday = useStore(s => s.isLoggedToday)
+  const mandatory = useStore(s => s.mandatoryActivities)
   const navigate = useNavigate()
-  const today = new Date()
+  const dow = new Date().getDay()
 
-  const scheduled = Object.values(ACTIVITIES).filter(
-    a => a.scheduledDays && isScheduledDay(a, today)
-  )
+  // Today's schedule comes from the user's mandatory list (Settings), not constants.
+  const scheduled = mandatory
+    .filter(m => m.scheduledDays.includes(dow))
+    .map(m => ({
+      id: m.id,
+      icon: m.icon ?? ACTIVITY_META[m.activityId]?.icon,
+      label: m.label,
+      penalty: m.penalty,
+      doneKeys: doneKeysFor(m),
+    }))
+  const mandatoryIds = new Set(mandatory.map(m => m.activityId))
   const optional = Object.values(ACTIVITIES).filter(
-    a => a.optional && !a.scheduledDays
+    a => !mandatoryIds.has(a.id) && ACTIVITY_DONE_KEYS[a.id]
   )
 
-  const doneToday = {
-    run:      isLoggedToday('RUN_SHORT') || isLoggedToday('RUN_MID') || isLoggedToday('RUN_LONG'),
-    shoulder: isLoggedToday('SHOULDER_DONE'),
-    tennis:   isLoggedToday('TENNIS_SHORT') || isLoggedToday('TENNIS_MID') || isLoggedToday('TENNIS_LONG'),
-    swim:     isLoggedToday('SWIM_SHORT') || isLoggedToday('SWIM_MID') || isLoggedToday('SWIM_LONG'),
-    strength: isLoggedToday('STRENGTH'),
-    yoga:     isLoggedToday('YOGA'),
-  }
+  const loggedAny = keys => keys.some(k => isLoggedToday(k))
+  const isOptionalDone = a => loggedAny(ACTIVITY_DONE_KEYS[a.id])
 
   return (
     <div>
@@ -63,10 +66,7 @@ export default function TaskList() {
 
       <div>
         {scheduled.map((activity) => {
-          const done = doneToday[activity.id]
-          const penaltyDelta = activity.id === 'run'
-            ? BUBBLE_RULES.SKIPPED_RUN.delta
-            : BUBBLE_RULES.SHOULDER_MISSED.delta
+          const done = loggedAny(activity.doneKeys)
 
           return (
             <div
@@ -98,9 +98,9 @@ export default function TaskList() {
                 {activity.icon} {activity.label}
               </span>
 
-              {activity.penaltyForSkip && !done && (
+              {!done && (
                 <span className="label-xs" style={{ color: 'var(--negative)' }}>
-                  {Math.abs(penaltyDelta)} if missed
+                  {Math.abs(activity.penalty)} if missed
                 </span>
               )}
               {done && <span className="label-xs" style={{ color: 'var(--text-3)' }}>Done</span>}
@@ -119,8 +119,8 @@ export default function TaskList() {
                 padding: '4px 10px',
                 border: '1px solid var(--border-dim)',
                 borderRadius: 1,
-                color: doneToday[a.id] ? 'var(--brass)' : 'var(--text-3)',
-                background: doneToday[a.id] ? 'rgba(201,168,76,0.08)' : 'transparent',
+                color: isOptionalDone(a) ? 'var(--brass)' : 'var(--text-3)',
+                background: isOptionalDone(a) ? 'rgba(201,168,76,0.08)' : 'transparent',
                 fontFamily: 'DM Sans, sans-serif',
               }}>
                 {a.icon} {a.label}

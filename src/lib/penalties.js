@@ -31,11 +31,20 @@ export function findMissedPenalties(logs, epochDateStr, mandatory, now = new Dat
     const label = BUBBLE_RULES[m.missedKey]?.label ?? `Missed ${m.label.toLowerCase()}`
     const delta = -Math.abs(m.penalty)
 
+    // Per-entry start: a newly added activity / newly scheduled day is never
+    // charged for days before it was set up.
+    const start = new Date(epoch)
+    if (m.startDate) {
+      const s = new Date(m.startDate)
+      s.setHours(0, 0, 0, 0)
+      if (s > start) start.setTime(s.getTime())
+    }
+
     for (let i = 1; i <= MAX_LOOKBACK_DAYS; i++) {
       const d = new Date(now)
       d.setHours(0, 0, 0, 0)
       d.setDate(d.getDate() - i)
-      if (d < epoch) break
+      if (d < start) break
       if (!m.scheduledDays.includes(d.getDay())) continue
       const key = d.toDateString()
       if (doneOn.has(key) || penalisedOn.has(key)) continue
