@@ -96,7 +96,8 @@ export const useStore = create(
       },
 
       weighAnchor: () => {
-        set({ anchorState: null })
+        // Move the enforcement epoch to today so days spent anchored are never charged.
+        set({ anchorState: null, penaltyEpoch: new Date().toDateString() })
       },
 
       setAnchorNotifOptIn: (val) => {

@@ -2,24 +2,39 @@ import { useEffect, useRef } from 'react'
 import { useStore } from '../store/useStore'
 import { findMissedPenalties } from '../lib/penalties'
 
+const DAY_CHECK_MS = 60 * 1000
+
 export function useMissedPenalties() {
   const ensurePenaltyEpoch = useStore(s => s.ensurePenaltyEpoch)
   const addBackdatedEntry  = useStore(s => s.addBackdatedEntry)
   const epoch              = useStore(s => s.penaltyEpoch)
-  const ran = useRef(false)
+  const lastCheckedDay = useRef(null)
 
   useEffect(() => { ensurePenaltyEpoch() }, [ensurePenaltyEpoch])
 
   useEffect(() => {
-    if (ran.current || !epoch) return
-    ran.current = true
-    const t = setTimeout(() => {
+    if (!epoch) return
+
+    // Evaluates once per calendar day; re-armed by resume/day-rollover below.
+    function check() {
+      const today = new Date().toDateString()
+      if (lastCheckedDay.current === today) return
       const s = useStore.getState()
-      // Skip penalty evaluation while anchored — user is paused
-      if (s.anchorState) return
-      const penalties = findMissedPenalties(s.logs, epoch, s.mandatoryActivities)
-      penalties.forEach(p => addBackdatedEntry(p))
-    }, 2500)
-    return () => clearTimeout(t)
+      if (s.anchorState) return // paused — retry once the anchor is weighed
+      lastCheckedDay.current = today
+      findMissedPenalties(s.logs, s.penaltyEpoch ?? epoch, s.mandatoryActivities)
+        .forEach(p => addBackdatedEntry(p))
+    }
+
+    const initial = setTimeout(check, 2500)
+    const onVisible = () => { if (document.visibilityState === 'visible') check() }
+    document.addEventListener('visibilitychange', onVisible)
+    const tick = setInterval(check, DAY_CHECK_MS)
+
+    return () => {
+      clearTimeout(initial)
+      clearInterval(tick)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [epoch, addBackdatedEntry])
 }
